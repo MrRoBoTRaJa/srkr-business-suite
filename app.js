@@ -95,7 +95,11 @@ function bindUi() {
   $("#invoiceSearch").addEventListener("input", renderInvoices);
   $("#exportBtn").addEventListener("click", exportBackup);
   $("#importBtn").addEventListener("click", importBackup);
-  $$("[data-print]").forEach((button) => button.addEventListener("click", () => printModule(button.dataset.print)));
+  $$("[data-preview]").forEach((button) => button.addEventListener("click", () => previewDocument(button.dataset.preview)));
+  $$("[data-pdf]").forEach((button) => button.addEventListener("click", () => downloadDocumentPdf(button.dataset.pdf)));
+  $("#previewPrintBtn").addEventListener("click", printPreview);
+  $("#previewDownloadBtn").addEventListener("click", () => downloadDocumentPdf($("#previewDialog").dataset.type));
+  $("#previewCloseBtn").addEventListener("click", () => $("#previewDialog").close());
   $("#invoiceForm").elements.amount.addEventListener("input", updateWords);
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
@@ -297,20 +301,47 @@ function table(headers, rows) {
   return `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell ?? ""}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
 
-function printModule(type) {
-  const area = $("#printArea");
+function previewDocument(type) {
+  const doc = buildDocument(type);
+  if (!doc) return;
+  $("#previewDialog").dataset.type = type;
+  $("#previewTitle").textContent = doc.title;
+  $("#previewFrame").srcdoc = previewShell(doc.html);
+  $("#previewDialog").showModal();
+}
+
+function printPreview() {
+  const frame = $("#previewFrame");
+  frame.contentWindow.focus();
+  frame.contentWindow.print();
+}
+
+function downloadDocumentPdf(type) {
+  const doc = buildDocument(type);
+  if (!doc) return;
+  const pdf = buildPdf(doc);
+  download(doc.filename, pdf, "application/pdf");
+}
+
+function buildDocument(type) {
   const head = printHead();
-  if (type === "invoice") area.innerHTML = printInvoice();
-  if (type === "business-card") area.innerHTML = `<div class="print-sheet">${$("#businessCardPrint").innerHTML}</div>`;
-  if (type === "letterhead") area.innerHTML = `<div class="print-sheet">${head}<div style="height:220mm"></div><p><strong>Authorized Signatory</strong></p></div>`;
-  if (type === "mis") area.innerHTML = `<div class="print-sheet">${head}<h2>MIS Register</h2>${$("#misList").innerHTML}</div>`;
-  if (type === "bills") area.innerHTML = `<div class="print-sheet">${head}<h2>Bill Register</h2>${$("#billList").innerHTML}</div>`;
-  if (type === "balance") area.innerHTML = `<div class="print-sheet">${head}<h2>Balance Sheet</h2>${$("#balanceSheet").innerHTML}</div>`;
-  window.print();
+  const docs = {
+    invoice: () => ({ title: "Invoice PDF", filename: `invoice_${$("#invoiceForm").elements.invoiceNo.value || "draft"}_${safeDate($("#invoiceForm").elements.invoiceDate.value)}.pdf`, html: printInvoice(), lines: invoicePdfLines() }),
+    "business-card": () => ({ title: "Business Card PDF", filename: "srkr_business_card.pdf", html: `<div class="print-sheet card-sheet">${$("#businessCardPrint").innerHTML}</div>`, lines: businessCardPdfLines() }),
+    letterhead: () => ({ title: "Letterhead PDF", filename: "srkr_letterhead.pdf", html: printLetterhead(), lines: letterheadPdfLines() }),
+    mis: () => ({ title: "MIS Register PDF", filename: `mis_register_${safeDate(new Date().toISOString().slice(0, 10))}.pdf`, html: `<div class="print-sheet">${head}<h2>MIS Register</h2>${$("#misList").innerHTML}</div>`, lines: registerPdfLines("MIS Register", ["Date", "Vehicle", "Party", "Route", "Ref", "Amount"], state.mis.map((row) => [dateShort(row.date), row.vehicle, row.party, row.route || "", row.reference || "", money(row.amount)])) }),
+    bills: () => ({ title: "Bills Register PDF", filename: `bills_register_${safeDate(new Date().toISOString().slice(0, 10))}.pdf`, html: `<div class="print-sheet">${head}<h2>Bill Register</h2>${$("#billList").innerHTML}</div>`, lines: registerPdfLines("Bill Register", ["Date", "Type", "Vendor", "Bill No.", "Amount"], state.bills.map((row) => [dateShort(row.date), row.type, row.vendor, row.billNo || "", money(row.amount)])) }),
+    balance: () => ({ title: "Balance Sheet PDF", filename: `balance_sheet_${safeDate(new Date().toISOString().slice(0, 10))}.pdf`, html: `<div class="print-sheet">${head}<h2>Balance Sheet</h2>${$("#balanceSheet").innerHTML}</div>`, lines: balancePdfLines() })
+  };
+  return docs[type] ? docs[type]() : null;
 }
 
 function printHead() {
-  return `<header class="print-head"><img src="assets/image2.png" alt=""><div><h2>${state.profile.companyName}</h2><p>${state.profile.address}</p><p>Mob: ${state.profile.mobile}</p><p>${state.profile.email}</p></div></header>`;
+  return `<header class="print-head"><img src="assets/image2.png" alt=""><div><h2>${escapeHtml(state.profile.companyName)}</h2><p>${escapeHtml(state.profile.address)}</p><p>Mob: ${escapeHtml(state.profile.mobile)}</p><p>${escapeHtml(state.profile.email)}</p></div></header>`;
+}
+
+function printLetterhead() {
+  return `<div class="print-sheet letterhead-sheet">${printHead()}<div class="letterhead-body"></div><footer class="letterhead-footer"><p>${escapeHtml(state.profile.bank || "")}</p><p><strong>Authorized Signatory</strong></p></footer></div>`;
 }
 
 function printInvoice() {
@@ -319,14 +350,176 @@ function printInvoice() {
   invoice.amount = Number(form.elements.amount.value || 0);
   return `<div class="print-sheet">${printHead()}<h2>INVOICE BILL</h2>
     <table class="print-table">
-      <tr><th colspan="2">TO, TVS SUPPLY CHAIN<br>SOLUTIONS LTD RANCHI<br>JHARKHAND<br>GSTIN: 20AACCT1412E1Z9</th><th colspan="2">INVOICE NO.: ${invoice.invoiceNo}<br>INVOICE DATE ${dateShort(invoice.invoiceDate)}</th></tr>
+      <tr><th colspan="2">TO, TVS SUPPLY CHAIN<br>SOLUTIONS LTD RANCHI<br>JHARKHAND<br>GSTIN: 20AACCT1412E1Z9</th><th colspan="2">INVOICE NO.: ${escapeHtml(invoice.invoiceNo)}<br>INVOICE DATE ${dateShort(invoice.invoiceDate)}</th></tr>
       <tr><th>SERIAL NO.</th><th>DESCRIPTION</th><th>MONTH OF BILL</th><th>AMOUNT</th></tr>
-      <tr><td>01</td><td>${invoice.description || ""}</td><td>${dateLong(invoice.monthFrom)} To ${dateLong(invoice.monthTo)}</td><td>${money(invoice.amount)}</td></tr>
+      <tr><td>01</td><td>${escapeHtml(invoice.description || "")}</td><td>${dateLong(invoice.monthFrom)} To ${dateLong(invoice.monthTo)}</td><td>${money(invoice.amount)}</td></tr>
       <tr><th colspan="3">Net Amount</th><th>${money(invoice.amount)}</th></tr>
     </table>
     <p><strong>AMOUNT IN WORDS: ${amountToIndianWords(invoice.amount)}</strong></p>
     <p>AGENCY (GTA) IS EXEMPT UNDER GST as per entry no. 22 of Notification No. 12/2017 Central Tax Rate 28,2017.</p>
   </div>`;
+}
+
+function previewShell(content) {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${printCss()}</style></head><body>${content}</body></html>`;
+}
+
+function printCss() {
+  return `
+    body{margin:0;background:#eef2f0;font-family:Arial,Helvetica,sans-serif;color:#000}
+    .print-sheet{width:190mm;min-height:277mm;margin:12px auto;background:white;padding:8mm;box-shadow:0 10px 28px rgba(0,0,0,.14)}
+    .print-head{display:grid;grid-template-columns:70px 1fr;gap:12px;align-items:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:16px}
+    .print-head img{width:64px}.print-head h2{margin:0;font-size:24px}.print-head p{margin:2px 0}
+    table{width:100%;border-collapse:collapse}.print-table th,.print-table td,th,td{border:1px solid #000;padding:8px;text-align:left;vertical-align:top}
+    th{font-weight:700}.letterhead-body{height:220mm}.letterhead-footer{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #000;padding-top:10px}
+    .card-sheet{display:grid;place-items:center}.card-face{width:90mm;height:52mm;border:1px solid #000;padding:6mm;display:grid;grid-template-columns:24mm 1fr;gap:4mm}.card-face img{width:22mm}.card-face h2{margin:0;font-size:15px}.card-face p{margin:2px 0 8px}.card-face strong,.card-face span,.card-face small{grid-column:2}
+  `;
+}
+
+function invoicePdfLines() {
+  const form = $("#invoiceForm");
+  const invoice = readForm(form);
+  const amount = Number(form.elements.amount.value || 0);
+  return [
+    ...companyPdfHeader(),
+    "",
+    "INVOICE BILL",
+    `Invoice No.: ${invoice.invoiceNo || ""}`,
+    `Invoice Date: ${dateShort(invoice.invoiceDate)}`,
+    "To: TVS SUPPLY CHAIN SOLUTIONS LTD RANCHI JHARKHAND",
+    "GSTIN: 20AACCT1412E1Z9",
+    "",
+    "SERIAL NO.    DESCRIPTION                  MONTH OF BILL                       AMOUNT",
+    `01            ${invoice.description || ""}    ${dateLong(invoice.monthFrom)} To ${dateLong(invoice.monthTo)}    ${money(amount)}`,
+    "",
+    `Net Amount: ${money(amount)}`,
+    `Amount in words: ${amountToIndianWords(amount)}`,
+    "AGENCY (GTA) IS EXEMPT UNDER GST as per entry no. 22 of Notification No. 12/2017 Central Tax Rate 28,2017."
+  ];
+}
+
+function businessCardPdfLines() {
+  return [...companyPdfHeader(), "", `Contact Person: ${state.profile.owner || ""}`, `Tagline: ${state.profile.tagline || ""}`];
+}
+
+function letterheadPdfLines() {
+  return [...companyPdfHeader(), "", "", "", "", "", "", "", "", "", "", "", "", "", "", "Authorized Signatory"];
+}
+
+function registerPdfLines(title, headers, rows) {
+  const lines = [...companyPdfHeader(), "", title, headers.join(" | "), "-".repeat(96)];
+  rows.forEach((row) => lines.push(row.join(" | ")));
+  if (!rows.length) lines.push("No records.");
+  return lines;
+}
+
+function balancePdfLines() {
+  const invoiceIncome = sum(state.invoices, "amount");
+  const misIncome = sum(state.mis, "amount");
+  const expense = sum(state.bills, "amount");
+  return [
+    ...companyPdfHeader(),
+    "",
+    "Balance Sheet",
+    `Invoice Income: ${money(invoiceIncome)}`,
+    `MIS Income: ${money(misIncome)}`,
+    `Total Income: ${money(invoiceIncome + misIncome)}`,
+    `Total Bills: ${money(expense)}`,
+    `Closing Balance: ${money(invoiceIncome + misIncome - expense)}`
+  ];
+}
+
+function companyPdfHeader() {
+  return [
+    state.profile.companyName || "",
+    state.profile.address || "",
+    `Mob: ${state.profile.mobile || ""}`,
+    state.profile.email || "",
+    state.profile.gstin ? `GSTIN: ${state.profile.gstin}` : ""
+  ].filter(Boolean);
+}
+
+function buildPdf(doc) {
+  const lines = doc.lines || [];
+  const pages = [];
+  for (let i = 0; i < lines.length; i += 40) pages.push(lines.slice(i, i + 40));
+  if (!pages.length) pages.push(["No data"]);
+  const fontNormal = 3 + pages.length * 2;
+  const fontBold = fontNormal + 1;
+  const kids = [];
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    ""
+  ];
+  pages.forEach((pageLines, index) => {
+    const pageObj = 3 + index * 2;
+    const contentObj = pageObj + 1;
+    const stream = pdfStream(pageLines, index === 0 ? doc.title : "");
+    kids.push(`${pageObj} 0 R`);
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontNormal} 0 R /F2 ${fontBold} 0 R >> >> /Contents ${contentObj} 0 R >>`);
+    objects.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+  });
+  objects[1] = `<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${pages.length} >>`;
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((obj, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${obj}\nendobj\n`;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.slice(1).forEach((offset) => {
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  });
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return new Blob([pdf], { type: "application/pdf" });
+}
+
+function pdfStream(lines, title) {
+  const out = ["BT", "/F2 15 Tf", "48 795 Td", `(${pdfText(title)}) Tj`, "/F1 10 Tf", "0 -24 Td"];
+  lines.forEach((line) => {
+    wrapPlain(line, 92).forEach((part) => {
+      out.push(`(${pdfText(part)}) Tj`, "0 -15 Td");
+    });
+  });
+  out.push("ET");
+  return out.join("\n");
+}
+
+function wrapPlain(text, limit) {
+  const words = String(text || "").split(/\s+/);
+  const lines = [];
+  let line = "";
+  words.forEach((word) => {
+    if (`${line} ${word}`.trim().length > limit) {
+      if (line) lines.push(line);
+      line = word;
+    } else {
+      line = `${line} ${word}`.trim();
+    }
+  });
+  if (line) lines.push(line);
+  return lines.length ? lines : [""];
+}
+
+function pdfText(value) {
+  return String(value || "").replace(/[^\x20-\x7E]/g, " ").replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+
+function safeDate(value) {
+  return (value || new Date().toISOString().slice(0, 10)).replaceAll("-", ".");
+}
+
+function escapeHtml(value) {
+  return String(value || "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[char]));
 }
 
 async function exportBackup() {

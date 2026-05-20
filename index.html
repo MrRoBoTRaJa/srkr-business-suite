@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#123f36">
     <title>SRKR Business Suite</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=5">
+    <link rel="stylesheet" href="styles.css?v=6">
   </head>
   <body>
     <header class="topbar">
@@ -88,7 +88,8 @@
           <label>Bank Details<textarea name="bank" rows="3"></textarea></label>
           <div class="actions">
             <button type="submit">Save Branding</button>
-            <button class="ghost" type="button" data-print="letterhead">Print Letterhead</button>
+            <button class="ghost" type="button" data-preview="letterhead">Preview Letterhead</button>
+            <button class="ghost" type="button" data-pdf="letterhead">Download PDF</button>
           </div>
         </form>
       </section>
@@ -111,7 +112,10 @@
           <section class="surface">
             <h2>Business Card</h2>
             <p class="muted">Branding page me jo company details save honge, yahan card me wahi auto dikhte rahenge.</p>
-            <button type="button" data-print="business-card">Print Business Card</button>
+            <div class="actions">
+              <button type="button" data-preview="business-card">Preview Card</button>
+              <button class="ghost" type="button" data-pdf="business-card">Download PDF</button>
+            </div>
           </section>
         </div>
       </section>
@@ -134,7 +138,8 @@
           <div class="actions">
             <button type="submit">Save Invoice</button>
             <button class="ghost" type="button" id="newInvoiceBtn">New</button>
-            <button class="ghost" type="button" data-print="invoice">Print Invoice</button>
+            <button class="ghost" type="button" data-preview="invoice">Preview PDF</button>
+            <button class="ghost" type="button" data-pdf="invoice">Download PDF</button>
           </div>
         </form>
         <section class="surface">
@@ -155,7 +160,7 @@
           <label>Route<input name="route"></label>
           <label>LR / Ref No.<input name="reference"></label>
           <label>Amount<input name="amount" type="number" min="0" step="0.01" required></label>
-          <div class="actions"><button type="submit">Save MIS</button><button class="ghost" type="button" data-print="mis">Print MIS</button></div>
+          <div class="actions"><button type="submit">Save MIS</button><button class="ghost" type="button" data-preview="mis">Preview PDF</button><button class="ghost" type="button" data-pdf="mis">Download PDF</button></div>
         </form>
         <section class="surface"><h2>MIS Register</h2><div id="misList" class="table-wrap"></div></section>
       </section>
@@ -169,7 +174,7 @@
           <label>Bill No.<input name="billNo"></label>
           <label>Amount<input name="amount" type="number" min="0" step="0.01" required></label>
           <label>Notes<textarea name="notes" rows="2"></textarea></label>
-          <div class="actions"><button type="submit">Save Bill</button><button class="ghost" type="button" data-print="bills">Print Bills</button></div>
+          <div class="actions"><button type="submit">Save Bill</button><button class="ghost" type="button" data-preview="bills">Preview PDF</button><button class="ghost" type="button" data-pdf="bills">Download PDF</button></div>
         </form>
         <section class="surface"><h2>Bill Register</h2><div id="billList" class="table-wrap"></div></section>
       </section>
@@ -178,7 +183,7 @@
         <div class="surface">
           <div class="section-head">
             <h2>Balance Sheet</h2>
-            <button type="button" data-print="balance">Print Balance Sheet</button>
+            <div class="actions"><button type="button" data-preview="balance">Preview PDF</button><button class="ghost" type="button" data-pdf="balance">Download PDF</button></div>
           </div>
           <div id="balanceSheet" class="balance-sheet"></div>
         </div>
@@ -201,7 +206,20 @@
     </main>
 
     <section id="printArea" class="print-area" aria-hidden="true"></section>
+    <dialog id="previewDialog" class="preview-dialog">
+      <div class="preview-shell">
+        <header class="preview-bar">
+          <strong id="previewTitle">Preview</strong>
+          <div class="actions">
+            <button type="button" id="previewPrintBtn">Print / Save PDF</button>
+            <button class="ghost" type="button" id="previewDownloadBtn">Download PDF</button>
+            <button class="ghost" type="button" id="previewCloseBtn">Close</button>
+          </div>
+        </header>
+        <iframe id="previewFrame" title="PDF preview"></iframe>
+      </div>
+    </dialog>
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=5" defer></script>
+    <script src="app.js?v=6" defer></script>
   </body>
 </html>
