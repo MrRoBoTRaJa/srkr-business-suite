@@ -1,13 +1,14 @@
-const CACHE_NAME = "spark-accounts-v9";
+const CACHE_NAME = "spark-accounts-v10";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=9",
-  "./app.js?v=9",
+  "./styles.css?v=10",
+  "./app.js?v=10",
   "./manifest.json",
   "./assets/image1.png",
   "./assets/image2.png",
-  "./assets/logo-pdf.jpg"
+  "./assets/logo-pdf.jpg",
+  "./assets/spark-logo.avif"
 ];
 
 self.addEventListener("install", (event) => {

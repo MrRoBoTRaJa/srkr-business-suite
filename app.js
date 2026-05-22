@@ -20,7 +20,9 @@ const defaults = {
   address: "Lowk, Near Vir Kuwar Singh Park, Ranchi 834001",
   bank: "",
   defaultInvoiceRows: 1,
-  descriptionMaster: "Vehicle hire charges\nTransportation charges\nLoading and unloading charges"
+  descriptionMaster: "Vehicle hire charges\nTransportation charges\nLoading and unloading charges",
+  loginUser: "admin",
+  loginPass: "spark@123"
 };
 
 document.addEventListener("DOMContentLoaded", init);
@@ -31,6 +33,7 @@ async function init() {
   bindUi();
   setTodayDefaults();
   renderAll();
+  applyAuthState();
   registerServiceWorker();
 }
 
@@ -88,6 +91,8 @@ async function loadAll() {
 }
 
 function bindUi() {
+  $("#loginForm").addEventListener("submit", handleLogin);
+  $("#logoutBtn").addEventListener("click", logout);
   $$(".tab").forEach((button) => button.addEventListener("click", () => showTab(button.dataset.tab)));
   $$("[data-jump]").forEach((button) => button.addEventListener("click", () => showTab(button.dataset.jump)));
   $("#profileForm").addEventListener("submit", saveProfile);
@@ -116,6 +121,38 @@ function bindUi() {
     deferredInstall = null;
     $("#installBtn").hidden = true;
   });
+}
+
+function handleLogin(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const username = form.elements.username.value.trim();
+  const password = form.elements.password.value;
+  const expectedUser = state.profile.loginUser || defaults.loginUser;
+  const expectedPass = state.profile.loginPass || defaults.loginPass;
+  if (username === expectedUser && password === expectedPass) {
+    sessionStorage.setItem("spark_accounts_logged_in", "yes");
+    $("#loginMessage").textContent = "";
+    form.reset();
+    applyAuthState();
+    return;
+  }
+  $("#loginMessage").textContent = "Wrong username or password";
+}
+
+function logout() {
+  sessionStorage.removeItem("spark_accounts_logged_in");
+  applyAuthState();
+}
+
+function applyAuthState() {
+  const isLoggedIn = sessionStorage.getItem("spark_accounts_logged_in") === "yes";
+  document.body.classList.toggle("is-authenticated", isLoggedIn);
+  document.body.classList.toggle("is-locked", !isLoggedIn);
+  $("#loginScreen").hidden = isLoggedIn;
+  if (!isLoggedIn) {
+    setTimeout(() => $("#loginForm").elements.username.focus(), 50);
+  }
 }
 
 function showTab(id) {
@@ -147,6 +184,8 @@ async function saveProfile(event) {
   event.preventDefault();
   const data = { ...readForm(event.currentTarget), id: "main" };
   data.defaultInvoiceRows = Math.max(1, Number(data.defaultInvoiceRows || 1));
+  data.loginUser = data.loginUser || defaults.loginUser;
+  data.loginPass = data.loginPass || defaults.loginPass;
   await put("profile", data);
   await loadAll();
   renderAll();
@@ -426,7 +465,7 @@ function buildDocument(type) {
 }
 
 function printHead() {
-  return `<header class="print-head"><img src="assets/image2.png" alt=""><div><h2>${escapeHtml(state.profile.companyName)}</h2><p>${escapeHtml(state.profile.address)}</p><p>Mob: ${escapeHtml(state.profile.mobile)}</p><p>${escapeHtml(state.profile.email)}</p></div></header>`;
+  return `<header class="print-head"><img src="assets/spark-logo.avif" alt=""><div><h2>${escapeHtml(state.profile.companyName)}</h2><p>${escapeHtml(state.profile.address)}</p><p>Mob: ${escapeHtml(state.profile.mobile)}</p><p>${escapeHtml(state.profile.email)}</p></div></header>`;
 }
 
 function printLetterhead() {

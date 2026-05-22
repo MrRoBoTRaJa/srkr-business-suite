@@ -3,16 +3,27 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#0b3f86">
+    <meta name="theme-color" content="#111111">
     <title>Spark Accounts Pro</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=9">
+    <link rel="stylesheet" href="styles.css?v=10">
   </head>
   <body>
+    <section id="loginScreen" class="login-screen">
+      <form id="loginForm" class="login-card">
+        <img src="assets/spark-logo.avif" alt="Spark Digital Marketing logo">
+        <p class="eyebrow">Spark Digital Marketing</p>
+        <h2>Spark Accounts Pro</h2>
+        <label>Username<input name="username" autocomplete="username" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <button type="submit">Login</button>
+        <p id="loginMessage" class="login-message" role="status"></p>
+      </form>
+    </section>
     <header class="topbar">
       <div class="brand-lockup">
         <div class="brand-mark">
-          <img src="assets/image2.png" alt="Spark Accounts logo">
+          <img src="assets/spark-logo.avif" alt="Spark Accounts logo">
         </div>
         <div>
           <p class="eyebrow">Spark Digital Marketing</p>
@@ -23,6 +34,7 @@
         <span class="status-chip">Sell Ready</span>
         <span class="status-chip accent">Local Data</span>
         <button id="installBtn" class="ghost" type="button" hidden>Install</button>
+        <button id="logoutBtn" class="ghost" type="button">Logout</button>
       </div>
     </header>
 
@@ -110,6 +122,8 @@
           <label>Email<input name="email" type="email"></label>
           <label>GSTIN<input name="gstin"></label>
           <label>Default Invoice Rows<input name="defaultInvoiceRows" type="number" min="1" max="20"></label>
+          <label>Login Username<input name="loginUser" autocomplete="off"></label>
+          <label>Login Password<input name="loginPass" type="password" autocomplete="new-password"></label>
           <label>Address<textarea name="address" rows="3"></textarea></label>
           <label>Bank Details<textarea name="bank" rows="3"></textarea></label>
           <label>Description Master<textarea name="descriptionMaster" rows="4" placeholder="Vehicle hire charges&#10;Transportation charges"></textarea></label>
@@ -125,7 +139,7 @@
         <div class="work-grid">
           <section class="surface card-preview printable" id="businessCardPrint">
             <div class="card-face">
-              <img src="assets/image2.png" alt="">
+              <img src="assets/spark-logo.avif" alt="">
               <div>
                 <h2 data-bind="companyName">Your Company Name</h2>
                 <p data-bind="tagline">Transport Contractor</p>
@@ -268,6 +282,6 @@
       </div>
     </dialog>
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=9" defer></script>
+    <script src="app.js?v=10" defer></script>
   </body>
 </html>

@@ -3,8 +3,8 @@
   "short_name": "Spark Accounts",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f5f8f7",
-  "theme_color": "#0b3f86",
+  "background_color": "#111111",
+  "theme_color": "#111111",
   "icons": [
     {
       "src": "assets/image2.png",
