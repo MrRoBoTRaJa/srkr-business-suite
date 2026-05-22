@@ -12,6 +12,7 @@ Modules:
 - Role-wise interface: Super Admin, Company Admin, Accountant and Viewer
 - Multiple company creation and selection
 - Customer and supplier ledgers
+- Cost Category master with voucher, invoice and stock tagging
 - Payment, Receipt, Contra and Journal vouchers
 - Sales and Purchase GST invoice entry
 - Inventory stock in/out

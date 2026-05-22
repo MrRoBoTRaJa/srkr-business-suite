@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#111111">
     <title>Spark ERP Phase 1</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=17">
+    <link rel="stylesheet" href="styles.css?v=18">
   </head>
   <body class="is-locked">
     <section id="loginScreen" class="login-screen">
@@ -63,6 +63,7 @@
       <button class="nav-btn" data-tab="companies" type="button">Company Create</button>
       <button class="nav-btn" data-tab="users" type="button">Users & Roles</button>
       <button class="nav-btn" data-tab="ledgers" type="button">Ledger</button>
+      <button class="nav-btn" data-tab="costCategories" type="button">Cost Category</button>
       <button class="nav-btn" data-tab="vouchers" type="button">Voucher Entry</button>
       <button class="nav-btn" data-tab="salesPurchase" type="button">Sales / Purchase</button>
       <button class="nav-btn" data-tab="inventory" type="button">Inventory</button>
@@ -81,6 +82,7 @@
               <button data-jump="companies" type="button">Company Create / Select</button>
               <button data-jump="users" type="button">User ID, Password, Roles</button>
               <button data-jump="ledgers" type="button">Customer / Supplier Ledger</button>
+              <button data-jump="costCategories" type="button">Cost Category</button>
             </div>
             <div class="gateway-group">
               <h3>Transactions</h3>
@@ -121,6 +123,7 @@
         <div class="stats-grid">
           <article><span>Users</span><strong id="statUsers">0</strong></article>
           <article><span>Ledgers</span><strong id="statLedgers">0</strong></article>
+          <article><span>Cost Categories</span><strong id="statCostCategories">0</strong></article>
           <article><span>Vouchers</span><strong id="statVouchers">0</strong></article>
           <article><span>Invoices</span><strong id="statInvoices">0</strong></article>
           <article><span>Stock Items</span><strong id="statStock">0</strong></article>
@@ -196,11 +199,30 @@
         </div>
       </section>
 
+      <section id="costCategories" class="panel">
+        <div class="two-col">
+          <form id="costCategoryForm" class="surface form-grid">
+            <h2>Cost Category</h2>
+            <input name="id" type="hidden">
+            <label>Category Name<input name="name" required></label>
+            <label>Type<select name="type"><option>Primary</option><option>Project</option><option>Department</option><option>Branch</option><option>Campaign</option></select></label>
+            <label>Status<select name="status"><option>Active</option><option>Inactive</option></select></label>
+            <label>Notes<textarea name="notes" rows="2"></textarea></label>
+            <div class="actions"><button type="submit">Save Cost Category</button><button class="ghost" id="newCostCategoryBtn" type="button">New</button></div>
+          </form>
+          <section class="surface">
+            <h2>Cost Category List</h2>
+            <div id="costCategoryList" class="table-wrap"></div>
+          </section>
+        </div>
+      </section>
+
       <section id="vouchers" class="panel">
         <form id="voucherForm" class="surface form-grid">
           <h2>Voucher Entry</h2>
           <label>Voucher Type<select name="type"><option>Payment</option><option>Receipt</option><option>Contra</option><option>Journal</option></select></label>
           <label>Date<input name="date" type="date" required></label>
+          <label>Cost Category<select name="costCategoryId"></select></label>
           <label>Debit Ledger<select name="debitLedger" required></select></label>
           <label>Credit Ledger<select name="creditLedger" required></select></label>
           <label>Amount<input name="amount" type="number" step="0.01" required></label>
@@ -218,6 +240,7 @@
             <label>Invoice No.<input name="invoiceNo" readonly></label>
             <label>Date<input name="date" type="date" required></label>
             <label>Party Ledger<select name="partyLedger" required></select></label>
+            <label>Cost Category<select name="costCategoryId"></select></label>
           </div>
           <div class="table-wrap">
             <table class="entry-table">
@@ -240,6 +263,7 @@
           <label>Date<input name="date" type="date" required></label>
           <label>Item Name<input name="item" required></label>
           <label>Type<select name="type"><option>Stock In</option><option>Stock Out</option></select></label>
+          <label>Cost Category<select name="costCategoryId"></select></label>
           <label>Qty<input name="qty" type="number" step="0.01" required></label>
           <label>Rate<input name="rate" type="number" step="0.01"></label>
           <label>Notes<textarea name="notes" rows="2"></textarea></label>
@@ -288,6 +312,6 @@
     </main>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=17" defer></script>
+    <script src="app.js?v=18" defer></script>
   </body>
 </html>

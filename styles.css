@@ -280,7 +280,7 @@ body.is-buyer-user .nav-btn[data-tab="companies"]::after {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 .stats-grid article {
