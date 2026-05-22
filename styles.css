@@ -244,7 +244,6 @@ dd { margin: 0; font-weight: 800; overflow-wrap: anywhere; }
   border-top: 1px solid var(--line);
 }
 .buyer-welcome {
-  display: none;
   margin-top: 14px;
   padding: 14px;
   background: white;
@@ -253,11 +252,10 @@ dd { margin: 0; font-weight: 800; overflow-wrap: anywhere; }
 }
 .buyer-welcome h3 { margin-bottom: 6px; }
 .buyer-welcome p { margin: 0; color: var(--muted); font-weight: 800; }
-body.is-buyer-user #sellerSetup { display: none; }
-body.is-buyer-user #buyerWelcome { display: block; }
 body.is-buyer-user .nav-btn[data-tab="companies"]::after {
   content: " / My Company";
 }
+[hidden] { display: none !important; }
 .setup-flow h3 { margin-bottom: 4px; }
 .setup-flow button {
   display: grid;

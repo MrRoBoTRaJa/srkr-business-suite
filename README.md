@@ -9,6 +9,7 @@ Default first login as Super Admin:
 Modules:
 - Login system with one Super Admin and company-wise users
 - Buyer login with Company Code, User ID and Password
+- Role-wise interface: Super Admin, Company Admin, Accountant and Viewer
 - Multiple company creation and selection
 - Customer and supplier ledgers
 - Payment, Receipt, Contra and Journal vouchers

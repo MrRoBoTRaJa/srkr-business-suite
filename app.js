@@ -167,9 +167,13 @@ function applyAuth() {
   const ok = !!currentUser;
   document.body.classList.toggle("is-locked", !ok);
   document.body.classList.toggle("is-super-admin", ok && isSuperAdmin(currentUser));
+  document.body.classList.toggle("is-company-admin", ok && currentUser?.role === "Company Admin");
+  document.body.classList.toggle("is-accountant", ok && currentUser?.role === "Accountant");
+  document.body.classList.toggle("is-viewer", ok && currentUser?.role === "Viewer");
   document.body.classList.toggle("is-buyer-user", ok && !isSuperAdmin(currentUser));
   $("#loginScreen").hidden = ok;
   $("#activeRole").textContent = ok ? currentUser.role : "Locked";
+  updateAccessUi();
 }
 
 function setLoginMode(mode) {
@@ -184,6 +188,10 @@ function setLoginMode(mode) {
 }
 
 function showTab(id) {
+  if (!canOpenTab(id)) {
+    toast("Is login me ye option allowed nahi hai");
+    id = "dashboard";
+  }
   $$(".nav-btn").forEach((button) => button.classList.toggle("active", button.dataset.tab === id));
   $$(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === id));
 }
@@ -208,6 +216,7 @@ function setActiveCompany(id, rerender = true) {
 
 async function saveCompany(event) {
   event.preventDefault();
+  if (!isSuperAdmin(currentUser)) return toast("New company sirf Super Admin bana sakta hai");
   const data = readForm(event.currentTarget);
   const company = { ...data, id: data.id || uid("cmp") };
   company.code = String(data.code || nextCompanyCode()).trim().toUpperCase();
@@ -296,6 +305,7 @@ function renderAll() {
   renderReports();
   renderGst();
   renderBackupList();
+  updateAccessUi();
 }
 
 function renderHeader() {
@@ -536,6 +546,35 @@ function renderStorageStatus(label) {
 
 function renderBackupList() {
   $("#backupList").innerHTML = table(["Date", "Reason", "Company"], state.backups.slice(-20).reverse().map((row) => [new Date(row.createdAt).toLocaleString("en-IN"), row.reason, row.companyId]));
+}
+
+function updateAccessUi() {
+  const allowed = allowedTabs();
+  $$(".nav-btn").forEach((button) => {
+    button.hidden = !allowed.includes(button.dataset.tab);
+  });
+  $$("[data-jump]").forEach((button) => {
+    button.hidden = !allowed.includes(button.dataset.jump);
+  });
+  $("#sellerSetup").hidden = !isSuperAdmin(currentUser);
+  $("#buyerWelcome").hidden = !currentUser || isSuperAdmin(currentUser);
+  const activePanel = $(".panel.active")?.id || "dashboard";
+  if (currentUser && !allowed.includes(activePanel)) showTab("dashboard");
+  const superOption = Array.from($("#userForm").elements.role.options).find((option) => option.value === "Super Admin");
+  if (superOption) superOption.hidden = !isSuperAdmin(currentUser);
+}
+
+function allowedTabs() {
+  if (!currentUser) return ["dashboard"];
+  if (isSuperAdmin(currentUser)) return ["dashboard", "companies", "users", "ledgers", "vouchers", "salesPurchase", "inventory", "reports", "gst", "backup"];
+  if (currentUser.role === "Company Admin") return ["dashboard", "users", "ledgers", "vouchers", "salesPurchase", "inventory", "reports", "gst", "backup"];
+  if (currentUser.role === "Accountant") return ["dashboard", "ledgers", "vouchers", "salesPurchase", "inventory", "reports", "gst", "backup"];
+  if (currentUser.role === "Viewer") return ["dashboard", "reports", "gst"];
+  return ["dashboard"];
+}
+
+function canOpenTab(id) {
+  return allowedTabs().includes(id);
 }
 
 function makeBackupPayload(reason = "export") {
