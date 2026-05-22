@@ -2,6 +2,10 @@
 
 Offline-first mini ERP / mini Tally style accounting software by Spark Digital Marketing.
 
+Default first login:
+- User ID: admin
+- Password: spark@123
+
 Modules:
 - Login system with User ID, Password and Roles
 - Multiple company creation and selection

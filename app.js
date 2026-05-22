@@ -79,6 +79,7 @@ function bindUi() {
   $("#companyForm").addEventListener("submit", saveCompany);
   $("#newCompanyBtn").addEventListener("click", () => $("#companyForm").reset());
   $("#userForm").addEventListener("submit", saveUser);
+  $("#newUserBtn").addEventListener("click", () => $("#userForm").reset());
   $("#ledgerForm").addEventListener("submit", saveLedger);
   $("#newLedgerBtn").addEventListener("click", () => $("#ledgerForm").reset());
   $("#voucherForm").addEventListener("submit", saveVoucher);
@@ -239,6 +240,7 @@ function renderHeader() {
   $("#dashFy").textContent = company ? `${dateShort(company.fyFrom)} to ${dateShort(company.fyTo)}` : "-";
   $("#dashUser").textContent = currentUser ? `${currentUser.userId} (${currentUser.role})` : "-";
   $("#dashBackup").textContent = localStorage.getItem("spark_erp_last_backup") || "-";
+  $("#statUsers").textContent = state.users.length;
   $("#statLedgers").textContent = companyRows(state.ledgers).length;
   $("#statVouchers").textContent = companyRows(state.vouchers).length;
   $("#statInvoices").textContent = companyRows(state.invoices).length;
@@ -266,8 +268,20 @@ function renderCompanyList() {
 window.selectCompany = (id) => setActiveCompany(id);
 
 function renderUserList() {
-  $("#userList").innerHTML = table(["User ID", "Role"], state.users.map((row) => [row.userId, row.role]));
+  $("#userList").innerHTML = table(["User ID", "Role", "Password", "Action"], state.users.map((row) => [
+    row.userId,
+    roleBadge(row.role),
+    "••••••",
+    `<button type="button" onclick="editUser('${escapeAttr(row.id)}')">Edit</button>`
+  ]));
 }
+
+window.editUser = (id) => {
+  const user = state.users.find((row) => row.id === id);
+  if (!user) return;
+  fillForm($("#userForm"), user);
+  showTab("users");
+};
 
 function renderLedgerList() {
   const rows = companyRows(state.ledgers);
@@ -455,6 +469,13 @@ function readForm(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
+function fillForm(form, data) {
+  Object.entries(data).forEach(([key, value]) => {
+    const field = form.elements[key];
+    if (field) field.value = value ?? "";
+  });
+}
+
 function table(headers, rows) {
   if (!rows.length) return `<div class="empty">No records.</div>`;
   return `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell ?? ""}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
@@ -492,6 +513,15 @@ function dateShort(value) {
 
 function escapeHtml(value) {
   return String(value || "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/`/g, "&#96;");
+}
+
+function roleBadge(role) {
+  const safeRole = escapeHtml(role || "Viewer");
+  return `<span class="role-badge role-${safeRole.toLowerCase()}">${safeRole}</span>`;
 }
 
 function download(filename, content, type) {

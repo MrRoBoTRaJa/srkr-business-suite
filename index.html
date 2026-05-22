@@ -6,20 +6,35 @@
     <meta name="theme-color" content="#111111">
     <title>Spark ERP Phase 1</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=11">
+    <link rel="stylesheet" href="styles.css?v=12">
   </head>
   <body class="is-locked">
     <section id="loginScreen" class="login-screen">
-      <form id="loginForm" class="login-card">
-        <img src="assets/spark-logo.avif" alt="Spark Digital Marketing logo">
-        <p class="eyebrow">Spark Digital Marketing</p>
-        <h1>Spark ERP Phase 1</h1>
-        <label>User ID<input name="userId" autocomplete="username" required></label>
-        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
-        <button type="submit">Login</button>
-        <p id="loginMessage" class="message" role="status"></p>
-        <small>Default: admin / spark@123</small>
-      </form>
+      <div class="login-wrap">
+        <form id="loginForm" class="login-card">
+          <img src="assets/spark-logo.avif" alt="Spark Digital Marketing logo">
+          <p class="eyebrow">Spark Digital Marketing</p>
+          <h1>Spark ERP Phase 1</h1>
+          <label>User ID<input name="userId" autocomplete="username" required></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+          <button type="submit">Login</button>
+          <p id="loginMessage" class="message" role="status"></p>
+          <div class="credential-box">
+            <strong>First login</strong>
+            <span>User ID: admin</span>
+            <span>Password: spark@123</span>
+          </div>
+        </form>
+        <aside class="login-help">
+          <h2>Company setup flow</h2>
+          <ol>
+            <li>Admin login kare.</li>
+            <li>Company Create me company banaye.</li>
+            <li>Users & Roles me staff ke login banaye.</li>
+            <li>Ledger, voucher, sales, purchase aur reports start kare.</li>
+          </ol>
+        </aside>
+      </div>
     </section>
 
     <header class="app-header">
@@ -82,9 +97,17 @@
               <div><dt>User</dt><dd id="dashUser">-</dd></div>
               <div><dt>Auto Backup</dt><dd id="dashBackup">-</dd></div>
             </dl>
+            <div class="setup-flow">
+              <h3>Start Selling Setup</h3>
+              <button data-jump="companies" type="button"><span>1</span>Create buyer company</button>
+              <button data-jump="users" type="button"><span>2</span>Create staff users</button>
+              <button data-jump="ledgers" type="button"><span>3</span>Add customers/suppliers</button>
+              <button data-jump="backup" type="button"><span>4</span>Export backup</button>
+            </div>
           </section>
         </div>
         <div class="stats-grid">
+          <article><span>Users</span><strong id="statUsers">0</strong></article>
           <article><span>Ledgers</span><strong id="statLedgers">0</strong></article>
           <article><span>Vouchers</span><strong id="statVouchers">0</strong></article>
           <article><span>Invoices</span><strong id="statInvoices">0</strong></article>
@@ -117,15 +140,21 @@
       <section id="users" class="panel">
         <div class="two-col">
           <form id="userForm" class="surface form-grid">
-            <h2>Login System</h2>
+            <h2>User Login & Roles</h2>
             <input name="id" type="hidden">
             <label>User ID<input name="userId" required></label>
             <label>Password<input name="password" type="password" required></label>
             <label>Role<select name="role"><option>Admin</option><option>Accountant</option><option>Viewer</option></select></label>
-            <div class="actions"><button type="submit">Save User</button></div>
+            <p class="form-note">Buyer ko app dene ke baad yahi se unka admin/accountant login bana sakte hain.</p>
+            <div class="actions"><button type="submit">Save User</button><button class="ghost" id="newUserBtn" type="button">New User</button></div>
           </form>
           <section class="surface">
-            <h2>Users</h2>
+            <h2>Users Visible List</h2>
+            <div class="role-cards">
+              <article><strong>Admin</strong><span>Full setup, users, backup</span></article>
+              <article><strong>Accountant</strong><span>Entries and reports</span></article>
+              <article><strong>Viewer</strong><span>Reports only</span></article>
+            </div>
             <div id="userList" class="table-wrap"></div>
           </section>
         </div>
@@ -239,6 +268,6 @@
     </main>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=11" defer></script>
+    <script src="app.js?v=12" defer></script>
   </body>
 </html>

@@ -1,9 +1,9 @@
-const CACHE_NAME = "spark-erp-phase1-v11";
+const CACHE_NAME = "spark-erp-phase1-v12";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=11",
-  "./app.js?v=11",
+  "./styles.css?v=12",
+  "./app.js?v=12",
   "./manifest.json",
   "./assets/image1.png",
   "./assets/image2.png",
