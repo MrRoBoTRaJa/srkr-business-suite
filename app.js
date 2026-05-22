@@ -18,7 +18,9 @@ const defaults = {
   email: "srkrroadlines9792@gmail.com",
   gstin: "",
   address: "Lowk, Near Vir Kuwar Singh Park, Ranchi 834001",
-  bank: ""
+  bank: "",
+  defaultInvoiceRows: 1,
+  descriptionMaster: "Vehicle hire charges\nTransportation charges\nLoading and unloading charges"
 };
 
 document.addEventListener("DOMContentLoaded", init);
@@ -92,6 +94,8 @@ function bindUi() {
   $("#misForm").addEventListener("submit", saveMis);
   $("#billForm").addEventListener("submit", saveBill);
   $("#newInvoiceBtn").addEventListener("click", resetInvoiceForm);
+  $("#addInvoiceRowBtn").addEventListener("click", () => addInvoiceRow());
+  $("#clearInvoiceRowsBtn").addEventListener("click", () => renderInvoiceRows(defaultInvoiceRowCount()));
   $("#invoiceSearch").addEventListener("input", renderInvoices);
   $("#exportBtn").addEventListener("click", exportBackup);
   $("#importBtn").addEventListener("click", importBackup);
@@ -100,7 +104,6 @@ function bindUi() {
   $("#previewPrintBtn").addEventListener("click", printPreview);
   $("#previewDownloadBtn").addEventListener("click", () => downloadDocumentPdf($("#previewDialog").dataset.type));
   $("#previewCloseBtn").addEventListener("click", () => $("#previewDialog").close());
-  $("#invoiceForm").elements.amount.addEventListener("input", updateWords);
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstall = event;
@@ -142,25 +145,32 @@ function readForm(form) {
 async function saveProfile(event) {
   event.preventDefault();
   const data = { ...readForm(event.currentTarget), id: "main" };
+  data.defaultInvoiceRows = Math.max(1, Number(data.defaultInvoiceRows || 1));
   await put("profile", data);
   await loadAll();
   renderAll();
+  if (!getInvoiceItems().some((item) => item.description || item.monthFrom || item.monthTo || item.amount)) {
+    renderInvoiceRows(defaultInvoiceRowCount());
+  }
   toast("Branding saved");
 }
 
 async function saveInvoice(event) {
   event.preventDefault();
   const form = event.currentTarget;
+  const items = getInvoiceItems().filter((item) => item.description || item.monthFrom || item.monthTo || item.amount);
   const data = {
     invoiceNo: Number(form.elements.invoiceNo.value),
     invoiceDate: form.elements.invoiceDate.value,
-    description: form.elements.description.value.trim(),
-    monthFrom: form.elements.monthFrom.value,
-    monthTo: form.elements.monthTo.value,
-    amount: Number(form.elements.amount.value),
+    items,
+    description: items[0]?.description || "",
+    monthFrom: items[0]?.monthFrom || "",
+    monthTo: items[items.length - 1]?.monthTo || "",
+    amount: sum(items, "amount"),
     createdAt: new Date().toISOString()
   };
-  if (!data.description || !data.invoiceDate || !data.monthFrom || !data.monthTo || !data.amount) return toast("Invoice fields blank nahi rahenge");
+  const incomplete = items.some((item) => !item.description || !item.monthFrom || !item.monthTo || !Number(item.amount));
+  if (!data.invoiceDate || !items.length || incomplete) return toast("Invoice rows complete karo");
   const old = state.invoices.find((invoice) => invoice.invoiceNo === data.invoiceNo);
   await put("invoices", old ? { ...old, ...data } : data);
   await loadAll();
@@ -197,6 +207,7 @@ function resetInvoiceForm() {
   form.reset();
   form.elements.invoiceNo.value = nextInvoiceNo();
   form.elements.invoiceDate.value = today;
+  renderInvoiceRows(defaultInvoiceRowCount());
   updateWords();
 }
 
@@ -205,11 +216,12 @@ function nextInvoiceNo() {
 }
 
 function updateWords() {
-  $("#invoiceWords").textContent = amountToIndianWords(Number($("#invoiceForm").elements.amount.value || 0));
+  $("#invoiceWords").textContent = amountToIndianWords(sum(getInvoiceItems(), "amount"));
 }
 
 function renderAll() {
   fillForm($("#profileForm"), state.profile);
+  renderDescriptionList();
   renderBindings();
   renderDashboard();
   renderInvoices();
@@ -246,14 +258,18 @@ function renderDashboard() {
 function renderInvoices() {
   const search = $("#invoiceSearch").value.trim();
   const rows = state.invoices.filter((row) => !search || String(row.invoiceNo).includes(search));
-  $("#invoiceList").innerHTML = table(["Invoice No.", "Date", "Description", "Month", "Amount", "Action"], rows.map((row) => [
-    row.invoiceNo,
-    dateShort(row.invoiceDate),
-    row.description,
-    `${dateLong(row.monthFrom)} To ${dateLong(row.monthTo)}`,
-    money(row.amount),
-    `<div class="row-actions"><button type="button" onclick="editInvoice(${row.invoiceNo})">Edit</button></div>`
-  ]));
+  $("#invoiceList").innerHTML = table(["Invoice No.", "Date", "Rows", "Description", "Month", "Amount", "Action"], rows.map((row) => {
+    const items = invoiceItems(row);
+    return [
+      row.invoiceNo,
+      dateShort(row.invoiceDate),
+      items.length,
+      items[0]?.description || row.description || "",
+      `${dateLong(items[0]?.monthFrom || row.monthFrom)} To ${dateLong(items[items.length - 1]?.monthTo || row.monthTo)}`,
+      money(row.amount),
+      `<div class="row-actions"><button type="button" onclick="editInvoice(${row.invoiceNo})">Edit</button></div>`
+    ];
+  }));
 }
 
 window.editInvoice = (invoiceNo) => {
@@ -261,9 +277,80 @@ window.editInvoice = (invoiceNo) => {
   if (!row) return;
   const form = $("#invoiceForm");
   fillForm(form, row);
+  renderInvoiceRows(invoiceItems(row));
   updateWords();
   showTab("invoice");
 };
+
+function renderDescriptionList() {
+  $("#descList").innerHTML = descriptionOptions().map((item) => `<option value="${escapeHtml(item)}"></option>`).join("");
+}
+
+function descriptionOptions() {
+  const defaultsList = defaults.descriptionMaster.split("\n");
+  const customList = String(state.profile.descriptionMaster || "").split(/\r?\n/);
+  return [...new Set([...customList, ...defaultsList].map((item) => item.trim()).filter(Boolean))];
+}
+
+function defaultInvoiceRowCount() {
+  return Math.max(1, Math.min(20, Number(state.profile.defaultInvoiceRows || 1)));
+}
+
+function renderInvoiceRows(rowsOrCount = 1) {
+  const rows = Array.isArray(rowsOrCount) ? rowsOrCount : Array.from({ length: rowsOrCount }, () => ({}));
+  $("#invoiceRows").innerHTML = "";
+  rows.forEach((item) => addInvoiceRow(item, false));
+  renumberInvoiceRows();
+  updateWords();
+}
+
+function addInvoiceRow(item = {}, focus = true) {
+  const tr = document.createElement("tr");
+  tr.className = "invoice-row";
+  tr.innerHTML = `
+    <td class="row-serial"></td>
+    <td><input class="row-description" list="descList" value="${escapeHtml(item.description || "")}" placeholder="Description"></td>
+    <td><input class="row-month-from" type="date" value="${escapeHtml(item.monthFrom || "")}"></td>
+    <td><input class="row-month-to" type="date" value="${escapeHtml(item.monthTo || "")}"></td>
+    <td><input class="row-amount" type="number" min="0" step="0.01" value="${item.amount ? Number(item.amount) : ""}" placeholder="0.00"></td>
+    <td><button class="ghost row-remove" type="button">Remove</button></td>
+  `;
+  tr.addEventListener("input", updateWords);
+  tr.querySelector(".row-remove").addEventListener("click", () => {
+    if ($$("#invoiceRows tr").length > 1) tr.remove();
+    else tr.querySelectorAll("input").forEach((input) => input.value = "");
+    renumberInvoiceRows();
+    updateWords();
+  });
+  $("#invoiceRows").appendChild(tr);
+  renumberInvoiceRows();
+  if (focus) tr.querySelector(".row-description").focus();
+}
+
+function renumberInvoiceRows() {
+  $$("#invoiceRows tr").forEach((row, index) => {
+    row.querySelector(".row-serial").textContent = String(index + 1).padStart(2, "0");
+  });
+}
+
+function getInvoiceItems() {
+  return $$("#invoiceRows tr").map((row) => ({
+    description: row.querySelector(".row-description")?.value.trim() || "",
+    monthFrom: row.querySelector(".row-month-from")?.value || "",
+    monthTo: row.querySelector(".row-month-to")?.value || "",
+    amount: Number(row.querySelector(".row-amount")?.value || 0)
+  }));
+}
+
+function invoiceItems(invoice) {
+  if (Array.isArray(invoice.items) && invoice.items.length) return invoice.items.map((item) => ({ ...item, amount: Number(item.amount || 0) }));
+  return [{
+    description: invoice.description || "",
+    monthFrom: invoice.monthFrom || "",
+    monthTo: invoice.monthTo || "",
+    amount: Number(invoice.amount || 0)
+  }];
+}
 
 function renderMis() {
   $("#misList").innerHTML = table(["Date", "Vehicle", "Party", "Route", "Ref", "Amount"], state.mis.map((row) => [
@@ -347,15 +434,23 @@ function printLetterhead() {
 function printInvoice() {
   const form = $("#invoiceForm");
   const invoice = readForm(form);
-  invoice.amount = Number(form.elements.amount.value || 0);
+  const items = getInvoiceItems().filter((item) => item.description || item.monthFrom || item.monthTo || item.amount);
+  const amount = sum(items, "amount");
+  const itemRows = (items.length ? items : [{}]).map((item, index) => `
+      <tr>
+        <td>${String(index + 1).padStart(2, "0")}</td>
+        <td>${escapeHtml(item.description || "")}</td>
+        <td>${dateLong(item.monthFrom)} To ${dateLong(item.monthTo)}</td>
+        <td>${money(item.amount)}</td>
+      </tr>`).join("");
   return `<div class="print-sheet">${printHead()}<h2>INVOICE BILL</h2>
     <table class="print-table">
       <tr><th colspan="2">TO, TVS SUPPLY CHAIN<br>SOLUTIONS LTD RANCHI<br>JHARKHAND<br>GSTIN: 20AACCT1412E1Z9</th><th colspan="2">INVOICE NO.: ${escapeHtml(invoice.invoiceNo)}<br>INVOICE DATE ${dateShort(invoice.invoiceDate)}</th></tr>
       <tr><th>SERIAL NO.</th><th>DESCRIPTION</th><th>MONTH OF BILL</th><th>AMOUNT</th></tr>
-      <tr><td>01</td><td>${escapeHtml(invoice.description || "")}</td><td>${dateLong(invoice.monthFrom)} To ${dateLong(invoice.monthTo)}</td><td>${money(invoice.amount)}</td></tr>
-      <tr><th colspan="3">Net Amount</th><th>${money(invoice.amount)}</th></tr>
+      ${itemRows}
+      <tr><th colspan="3">Net Amount</th><th>${money(amount)}</th></tr>
     </table>
-    <p><strong>AMOUNT IN WORDS: ${amountToIndianWords(invoice.amount)}</strong></p>
+    <p><strong>AMOUNT IN WORDS: ${amountToIndianWords(amount)}</strong></p>
     <p>AGENCY (GTA) IS EXEMPT UNDER GST as per entry no. 22 of Notification No. 12/2017 Central Tax Rate 28,2017.</p>
   </div>`;
 }
@@ -379,8 +474,9 @@ function printCss() {
 function invoicePdfLines() {
   const form = $("#invoiceForm");
   const invoice = readForm(form);
-  const amount = Number(form.elements.amount.value || 0);
-  return [
+  const items = getInvoiceItems().filter((item) => item.description || item.monthFrom || item.monthTo || item.amount);
+  const amount = sum(items, "amount");
+  const lines = [
     ...companyPdfHeader(),
     "",
     "INVOICE BILL",
@@ -389,12 +485,19 @@ function invoicePdfLines() {
     "To: TVS SUPPLY CHAIN SOLUTIONS LTD RANCHI JHARKHAND",
     "GSTIN: 20AACCT1412E1Z9",
     "",
-    "SERIAL NO.    DESCRIPTION                  MONTH OF BILL                       AMOUNT",
-    `01            ${invoice.description || ""}    ${dateLong(invoice.monthFrom)} To ${dateLong(invoice.monthTo)}    ${money(amount)}`,
+    "SERIAL NO.    DESCRIPTION                  MONTH OF BILL                       AMOUNT"
+  ];
+  (items.length ? items : [{}]).forEach((item, index) => {
+    lines.push(`${String(index + 1).padStart(2, "0")}            ${item.description || ""}    ${dateLong(item.monthFrom)} To ${dateLong(item.monthTo)}    ${money(item.amount)}`);
+  });
+  lines.push(
     "",
     `Net Amount: ${money(amount)}`,
     `Amount in words: ${amountToIndianWords(amount)}`,
     "AGENCY (GTA) IS EXEMPT UNDER GST as per entry no. 22 of Notification No. 12/2017 Central Tax Rate 28,2017."
+  );
+  return [
+    ...lines
   ];
 }
 

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#123f36">
     <title>SRKR Business Suite</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=6">
+    <link rel="stylesheet" href="styles.css?v=7">
   </head>
   <body>
     <header class="topbar">
@@ -84,8 +84,10 @@
           <label>Mobile Numbers<input name="mobile"></label>
           <label>Email<input name="email" type="email"></label>
           <label>GSTIN<input name="gstin"></label>
+          <label>Default Invoice Rows<input name="defaultInvoiceRows" type="number" min="1" max="20"></label>
           <label>Address<textarea name="address" rows="3"></textarea></label>
           <label>Bank Details<textarea name="bank" rows="3"></textarea></label>
+          <label>Description Master<textarea name="descriptionMaster" rows="4" placeholder="Vehicle hire charges&#10;Transportation charges"></textarea></label>
           <div class="actions">
             <button type="submit">Save Branding</button>
             <button class="ghost" type="button" data-preview="letterhead">Preview Letterhead</button>
@@ -125,15 +127,35 @@
           <h2>Invoice Entry</h2>
           <label>Invoice No.<input name="invoiceNo" type="number" readonly></label>
           <label>Invoice Date<input name="invoiceDate" type="date" required></label>
-          <label>Description<input name="description" list="descList" required></label>
           <datalist id="descList">
             <option value="Vehicle hire charges"></option>
             <option value="Transportation charges"></option>
             <option value="Loading and unloading charges"></option>
           </datalist>
-          <label>Month From<input name="monthFrom" type="date" required></label>
-          <label>Month To<input name="monthTo" type="date" required></label>
-          <label>Amount<input name="amount" type="number" min="0" step="0.01" required></label>
+          <div class="ledger-panel">
+            <div class="section-head compact">
+              <h3>Invoice Ledger Rows</h3>
+              <div class="actions">
+                <button class="ghost" type="button" id="addInvoiceRowBtn">Add Row</button>
+                <button class="ghost" type="button" id="clearInvoiceRowsBtn">Clear Rows</button>
+              </div>
+            </div>
+            <div class="table-wrap ledger-wrap">
+              <table class="ledger-table">
+                <thead>
+                  <tr>
+                    <th>SL</th>
+                    <th>Description</th>
+                    <th>Month From</th>
+                    <th>Month To</th>
+                    <th>Amount</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="invoiceRows"></tbody>
+              </table>
+            </div>
+          </div>
           <div class="amount-words" id="invoiceWords">Rupees Zero Only.</div>
           <div class="actions">
             <button type="submit">Save Invoice</button>
@@ -220,6 +242,6 @@
       </div>
     </dialog>
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=6" defer></script>
+    <script src="app.js?v=7" defer></script>
   </body>
 </html>

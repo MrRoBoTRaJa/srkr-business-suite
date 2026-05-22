@@ -120,6 +120,16 @@ h2 { margin: 0 0 14px; font-size: 19px; line-height: 1.2; letter-spacing: 0; }
   backdrop-filter: blur(14px);
 }
 
+.tabs::before {
+  content: "Gateway";
+  flex: 0 0 auto;
+  align-self: center;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .tab, button {
   border: 0;
   background: var(--brand);
@@ -338,6 +348,7 @@ main {
 }
 
 .form-grid h2, .form-grid .actions, .form-grid textarea, .amount-words { grid-column: 1 / -1; }
+.form-grid .ledger-panel { grid-column: 1 / -1; }
 label { display: grid; gap: 7px; font-weight: 800; font-size: 13px; color: #263530; }
 
 input, select, textarea {
@@ -369,6 +380,59 @@ textarea { resize: vertical; }
   background: #fff9e8;
   border-radius: 7px;
   font-weight: 800;
+}
+
+.ledger-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #b7c8c3;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f9fcfb;
+}
+
+.section-head.compact {
+  margin-bottom: 0;
+}
+
+.section-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.ledger-wrap {
+  border-color: #9fb6af;
+}
+
+.ledger-table {
+  min-width: 860px;
+}
+
+.ledger-table th {
+  background: #143f36;
+  color: white;
+}
+
+.ledger-table th:first-child,
+.ledger-table td:first-child {
+  width: 56px;
+  text-align: center;
+  font-weight: 900;
+}
+
+.ledger-table th:last-child,
+.ledger-table td:last-child {
+  width: 92px;
+}
+
+.ledger-table input {
+  min-height: 38px;
+  border-radius: 4px;
+  background: white;
+}
+
+.ledger-table .row-amount {
+  text-align: right;
 }
 
 .section-head {
@@ -555,6 +619,56 @@ dd { margin: 0; font-weight: 800; overflow-wrap: anywhere; }
   .tabs { top: 83px; }
 }
 
+@media (min-width: 1020px) {
+  body::before {
+    height: 150px;
+  }
+
+  .topbar {
+    left: 0;
+    right: 0;
+  }
+
+  .tabs {
+    position: fixed;
+    top: 84px;
+    left: 0;
+    bottom: 0;
+    width: 232px;
+    max-width: 232px;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    padding: 14px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+    background: #eef4f1;
+  }
+
+  .tabs::before {
+    padding: 8px 10px;
+  }
+
+  .tab {
+    width: 100%;
+    justify-content: flex-start;
+    border-color: #c7d6d1;
+  }
+
+  main {
+    max-width: none;
+    margin-left: 232px;
+    width: calc(100% - 232px);
+    padding: 18px 22px;
+  }
+
+  .panel.active {
+    max-width: 1240px;
+  }
+}
+
 @media (max-width: 760px) {
   body::before { height: 190px; }
   .topbar {
@@ -573,6 +687,7 @@ dd { margin: 0; font-weight: 800; overflow-wrap: anywhere; }
     padding: 9px 10px;
     overflow: visible;
   }
+  .tabs::before { display: none; }
   .tab {
     width: 100%;
     justify-content: center;
