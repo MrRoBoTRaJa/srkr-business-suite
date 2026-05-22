@@ -1,15 +1,23 @@
 package com.sparkdigitalmarketing.sparkerp;
 
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.webkit.JavascriptInterface;
 import android.webkit.MimeTypeMap;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,12 +26,23 @@ import java.util.Map;
 
 public class MainActivity extends Activity {
     private static final String APP_HOST = "spark-erp.local";
-    private static final String START_URL = "https://" + APP_HOST + "/index.html?v=22";
+    private static final String START_URL = "https://" + APP_HOST + "/index.html?v=23";
+    private static final String APK_MIME = "application/vnd.android.package-archive";
     private WebView webView;
+    private long updateDownloadId = -1L;
+    private DownloadManager downloadManager;
+    private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L);
+            if (id == updateDownloadId) installDownloadedApk(id);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
         webView = new WebView(this);
         setContentView(webView);
 
@@ -35,8 +54,14 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(false);
         settings.setMediaPlaybackRequiresUserGesture(false);
 
+        webView.addJavascriptInterface(new AndroidBridge(), "SparkAndroid");
         webView.setWebViewClient(new LocalAssetClient());
-        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> openExternal(url));
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> downloadApk(url));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        }
         webView.loadUrl(START_URL);
     }
 
@@ -47,6 +72,12 @@ public class MainActivity extends Activity {
             return;
         }
         super.onBackPressed();
+    }
+
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(downloadReceiver);
+        super.onDestroy();
     }
 
     private class LocalAssetClient extends WebViewClient {
@@ -65,7 +96,11 @@ public class MainActivity extends Activity {
             String host = uri.getHost();
             if (APP_HOST.equals(host)) return false;
             if ("github.com".equals(host) || "objects.githubusercontent.com".equals(host)) {
-                openExternal(uri.toString());
+                if (uri.getPath() != null && uri.getPath().endsWith(".apk")) {
+                    downloadApk(uri.toString());
+                } else {
+                    openExternal(uri.toString());
+                }
                 return true;
             }
             return false;
@@ -112,6 +147,44 @@ public class MainActivity extends Activity {
             startActivity(intent);
         } catch (Exception ignored) {
             webView.loadUrl(url);
+        }
+    }
+
+    private void downloadApk(String url) {
+        try {
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+            request.setTitle("Spark ERP update");
+            request.setDescription("Downloading latest Spark ERP APK");
+            request.setMimeType(APK_MIME);
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "Spark-ERP-update.apk");
+            updateDownloadId = downloadManager.enqueue(request);
+            Toast.makeText(this, "APK download start ho gaya", Toast.LENGTH_LONG).show();
+        } catch (Exception error) {
+            Toast.makeText(this, "Download open nahi ho raha, browser me try karein", Toast.LENGTH_LONG).show();
+            openExternal(url);
+        }
+    }
+
+    private void installDownloadedApk(long id) {
+        try {
+            Uri apkUri = downloadManager.getUriForDownloadedFile(id);
+            if (apkUri == null) return;
+            Intent install = new Intent(Intent.ACTION_VIEW);
+            install.setDataAndType(apkUri, APK_MIME);
+            install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(install);
+        } catch (Exception error) {
+            Toast.makeText(this, "Install permission allow karke APK open karein", Toast.LENGTH_LONG).show();
+            startActivity(new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS));
+        }
+    }
+
+    private class AndroidBridge {
+        @JavascriptInterface
+        public void downloadApk(String url) {
+            runOnUiThread(() -> MainActivity.this.downloadApk(url));
         }
     }
 }

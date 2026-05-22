@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.0.2";
+const APP_VERSION = "1.0.3";
 const RELEASE_API = "https://api.github.com/repos/MrRoBoTRaJa/spark-erp/releases/latest";
 const DB_NAME = "spark_erp_phase1";
 const DB_VERSION = 3;
@@ -698,6 +698,11 @@ function downloadUpdate() {
   const url = $("#downloadUpdateBtn").dataset.url || localStorage.getItem("spark_erp_update_url");
   if (!url) {
     toast("Pehle Check Update dabaiye");
+    return;
+  }
+  if (window.SparkAndroid?.downloadApk) {
+    window.SparkAndroid.downloadApk(url);
+    toast("APK download start ho raha hai");
     return;
   }
   const link = document.createElement("a");
