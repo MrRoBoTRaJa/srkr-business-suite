@@ -16,7 +16,7 @@ import java.util.Map;
 
 public class MainActivity extends Activity {
     private static final String APP_HOST = "spark-erp.local";
-    private static final String START_URL = "https://" + APP_HOST + "/index.html?v=20";
+    private static final String START_URL = "https://" + APP_HOST + "/index.html?v=21";
     private WebView webView;
 
     @Override

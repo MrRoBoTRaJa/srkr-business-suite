@@ -7,8 +7,8 @@
   "theme_color": "#111111",
   "icons": [
     {
-      "src": "assets/image2.png",
-      "sizes": "192x192",
+      "src": "assets/spark-icon.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]

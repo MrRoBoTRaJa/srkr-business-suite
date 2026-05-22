@@ -1,14 +1,15 @@
-const CACHE_NAME = "spark-erp-phase1-v20";
+const CACHE_NAME = "spark-erp-phase1-v21";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=20",
-  "./app.js?v=20",
+  "./styles.css?v=21",
+  "./app.js?v=21",
   "./manifest.json",
   "./assets/image1.png",
   "./assets/image2.png",
   "./assets/logo-pdf.jpg",
-  "./assets/spark-logo.avif"
+  "./assets/spark-logo.avif",
+  "./assets/spark-icon.png"
 ];
 
 self.addEventListener("install", (event) => {
