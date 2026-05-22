@@ -280,7 +280,7 @@ th { color: var(--gold); background: var(--black); }
 }
 .role-cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -305,8 +305,22 @@ th { color: var(--gold); background: var(--black); }
   border-radius: 999px;
   font-weight: 900;
 }
+.role-super-admin { color: white; background: #111; }
+.role-company-admin { background: #ffe36a; }
 .role-accountant { background: #c8f7d6; }
 .role-viewer { background: #d7e8ff; }
+.storage-card {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.storage-card strong { color: var(--black); }
+.storage-card span { color: var(--muted); font-weight: 900; }
+.storage-card button { justify-self: start; }
 
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .report-box {

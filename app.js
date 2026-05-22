@@ -3,7 +3,7 @@
 const DB_NAME = "spark_erp_phase1";
 const DB_VERSION = 1;
 const STORES = ["users", "companies", "ledgers", "vouchers", "invoices", "stock", "backups"];
-const DEFAULT_USER = { id: "admin", userId: "admin", password: "spark@123", role: "Admin" };
+const DEFAULT_USER = { id: "admin", userId: "admin", password: "spark@123", role: "Super Admin", companyId: "" };
 
 let db;
 let currentUser = null;
@@ -23,6 +23,7 @@ async function init() {
   setToday();
   renderAll();
   applyAuth();
+  await requestPersistentStorage();
   registerServiceWorker();
 }
 
@@ -62,12 +63,23 @@ function put(name, value) {
 
 async function ensureDefaultUser() {
   const users = await getAll("users");
-  if (!users.length) await put("users", DEFAULT_USER);
+  if (!users.length) {
+    await put("users", DEFAULT_USER);
+    return;
+  }
+  const admin = users.find((user) => user.id === "admin" || user.userId === "admin");
+  if (admin && admin.role !== "Super Admin") {
+    await put("users", { ...admin, id: "admin", userId: "admin", role: "Super Admin", companyId: "" });
+  }
 }
 
 async function loadAll() {
   const entries = await Promise.all(STORES.map((name) => getAll(name)));
   STORES.forEach((name, index) => state[name] = entries[index]);
+  if (currentUser && !isSuperAdmin(currentUser) && currentUser.companyId) {
+    setActiveCompany(currentUser.companyId, false);
+    return;
+  }
   if (!activeCompanyId && state.companies[0]) setActiveCompany(state.companies[0].id, false);
 }
 
@@ -79,7 +91,8 @@ function bindUi() {
   $("#companyForm").addEventListener("submit", saveCompany);
   $("#newCompanyBtn").addEventListener("click", () => $("#companyForm").reset());
   $("#userForm").addEventListener("submit", saveUser);
-  $("#newUserBtn").addEventListener("click", () => $("#userForm").reset());
+  $("#newUserBtn").addEventListener("click", resetUserForm);
+  $("#userForm").elements.role.addEventListener("change", updateUserCompanyField);
   $("#ledgerForm").addEventListener("submit", saveLedger);
   $("#newLedgerBtn").addEventListener("click", () => $("#ledgerForm").reset());
   $("#voucherForm").addEventListener("submit", saveVoucher);
@@ -87,6 +100,7 @@ function bindUi() {
   $("#addInvoiceItemBtn").addEventListener("click", () => addInvoiceItem());
   $("#stockForm").addEventListener("submit", saveStock);
   $("#refreshReportsBtn").addEventListener("click", renderReports);
+  $("#persistStorageBtn").addEventListener("click", () => requestPersistentStorage(true));
   $("#exportBackupBtn").addEventListener("click", exportBackup);
   $("#createBackupBtn").addEventListener("click", () => autoBackup("manual"));
   $("#importBackupBtn").addEventListener("click", importBackup);
@@ -112,6 +126,7 @@ function login(event) {
   }
   currentUser = user;
   sessionStorage.setItem("spark_erp_user", user.id);
+  if (!isSuperAdmin(user) && user.companyId) setActiveCompany(user.companyId, false);
   event.currentTarget.reset();
   applyAuth();
   renderAll();
@@ -146,6 +161,10 @@ function companyRows(rows) {
 }
 
 function setActiveCompany(id, rerender = true) {
+  if (currentUser && !isSuperAdmin(currentUser) && currentUser.companyId && currentUser.companyId !== id) {
+    toast("Aapka login sirf apni company ke liye hai");
+    return;
+  }
   activeCompanyId = id;
   localStorage.setItem("spark_erp_active_company", id);
   if (rerender) renderAll();
@@ -164,9 +183,17 @@ async function saveCompany(event) {
 async function saveUser(event) {
   event.preventDefault();
   const data = readForm(event.currentTarget);
-  await put("users", { ...data, id: data.id || data.userId || uid("usr") });
+  if (!canManageUsers()) return toast("Users manage karne ke liye admin login chahiye");
+  if (data.role === "Super Admin" && !isSuperAdmin(currentUser)) return toast("Super Admin sirf main admin bana sakta hai");
+  if (data.role !== "Super Admin" && !(data.companyId || activeCompanyId)) {
+    toast("Pehle company select karo");
+    showTab("companies");
+    return;
+  }
+  const companyId = data.role === "Super Admin" ? "" : (isSuperAdmin(currentUser) ? (data.companyId || activeCompanyId) : currentUser.companyId);
+  await put("users", { ...data, id: data.id || data.userId || uid("usr"), companyId });
   await afterWrite("User saved");
-  event.currentTarget.reset();
+  resetUserForm();
 }
 
 async function saveLedger(event) {
@@ -221,6 +248,7 @@ async function afterWrite(message) {
 function renderAll() {
   renderHeader();
   renderCompanyList();
+  renderCompanyOptions();
   renderUserList();
   renderLedgerList();
   renderLedgerOptions();
@@ -239,8 +267,9 @@ function renderHeader() {
   $("#dashCompany").textContent = company ? company.name : "-";
   $("#dashFy").textContent = company ? `${dateShort(company.fyFrom)} to ${dateShort(company.fyTo)}` : "-";
   $("#dashUser").textContent = currentUser ? `${currentUser.userId} (${currentUser.role})` : "-";
+  renderStorageStatus(localStorage.getItem("spark_erp_storage_status") || "Checking...");
   $("#dashBackup").textContent = localStorage.getItem("spark_erp_last_backup") || "-";
-  $("#statUsers").textContent = state.users.length;
+  $("#statUsers").textContent = visibleUsers().length;
   $("#statLedgers").textContent = companyRows(state.ledgers).length;
   $("#statVouchers").textContent = companyRows(state.vouchers).length;
   $("#statInvoices").textContent = companyRows(state.invoices).length;
@@ -259,7 +288,8 @@ function resetInvoiceForm() {
 }
 
 function renderCompanyList() {
-  $("#companyList").innerHTML = table(["Company", "GSTIN", "FY", "Action"], state.companies.map((row) => [
+  const companies = isSuperAdmin(currentUser) ? state.companies : state.companies.filter((row) => row.id === currentUser?.companyId);
+  $("#companyList").innerHTML = table(["Company", "GSTIN", "FY", "Action"], companies.map((row) => [
     row.name, row.gstin || "", `${dateShort(row.fyFrom)} to ${dateShort(row.fyTo)}`,
     `<button type="button" onclick="selectCompany('${row.id}')">Open</button>`
   ]));
@@ -267,19 +297,36 @@ function renderCompanyList() {
 
 window.selectCompany = (id) => setActiveCompany(id);
 
+function renderCompanyOptions() {
+  const select = $("#userForm").elements.companyId;
+  const companies = isSuperAdmin(currentUser) ? state.companies : state.companies.filter((row) => row.id === currentUser?.companyId);
+  const options = companies.map((row) => `<option value="${escapeAttr(row.id)}">${escapeHtml(row.name)}</option>`).join("");
+  select.innerHTML = `<option value="">Select Company</option>${options}`;
+  if (activeCompanyId) select.value = activeCompanyId;
+  updateUserCompanyField();
+}
+
 function renderUserList() {
-  $("#userList").innerHTML = table(["User ID", "Role", "Password", "Action"], state.users.map((row) => [
+  $("#userList").innerHTML = table(["User ID", "Role", "Company", "Password", "Action"], visibleUsers().map((row) => [
     row.userId,
     roleBadge(row.role),
+    row.companyId ? companyName(row.companyId) : "All Companies",
     "••••••",
     `<button type="button" onclick="editUser('${escapeAttr(row.id)}')">Edit</button>`
   ]));
+}
+
+function visibleUsers() {
+  if (isSuperAdmin(currentUser)) return state.users;
+  if (!currentUser?.companyId) return [];
+  return state.users.filter((row) => row.companyId === currentUser.companyId || row.id === currentUser.id);
 }
 
 window.editUser = (id) => {
   const user = state.users.find((row) => row.id === id);
   if (!user) return;
   fillForm($("#userForm"), user);
+  updateUserCompanyField();
   showTab("users");
 };
 
@@ -425,6 +472,30 @@ async function autoBackup(reason) {
   renderBackupList();
 }
 
+async function requestPersistentStorage(showToast = false) {
+  if (!navigator.storage?.persist) {
+    renderStorageStatus("Browser support nahi hai");
+    if (showToast) toast("Is browser me persistent storage support nahi hai");
+    return false;
+  }
+  const alreadyPermanent = await navigator.storage.persisted();
+  const isPermanent = alreadyPermanent || await navigator.storage.persist();
+  const estimate = await navigator.storage.estimate?.();
+  const usedMb = estimate?.usage ? ` (${(estimate.usage / 1024 / 1024).toFixed(1)} MB used)` : "";
+  const label = isPermanent ? `Permanent${usedMb}` : `Browser managed${usedMb}`;
+  renderStorageStatus(label);
+  localStorage.setItem("spark_erp_storage_status", label);
+  if (showToast) toast(isPermanent ? "Data permanent storage me lock ho gaya" : "Browser ne permanent storage allow nahi kiya");
+  return isPermanent;
+}
+
+function renderStorageStatus(label) {
+  const dash = $("#dashStorage");
+  const backup = $("#storageStatus");
+  if (dash) dash.textContent = label;
+  if (backup) backup.textContent = label;
+}
+
 function renderBackupList() {
   $("#backupList").innerHTML = table(["Date", "Reason", "Company"], state.backups.slice(-20).reverse().map((row) => [new Date(row.createdAt).toLocaleString("en-IN"), row.reason, row.companyId]));
 }
@@ -476,6 +547,21 @@ function fillForm(form, data) {
   });
 }
 
+function resetUserForm() {
+  const form = $("#userForm");
+  form.reset();
+  form.elements.companyId.value = activeCompanyId || "";
+  updateUserCompanyField();
+}
+
+function updateUserCompanyField() {
+  const form = $("#userForm");
+  const isGlobal = form.elements.role.value === "Super Admin";
+  form.elements.companyId.disabled = isGlobal;
+  if (isGlobal) form.elements.companyId.value = "";
+  if (!isGlobal && !form.elements.companyId.value && activeCompanyId) form.elements.companyId.value = activeCompanyId;
+}
+
 function table(headers, rows) {
   if (!rows.length) return `<div class="empty">No records.</div>`;
   return `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell ?? ""}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
@@ -483,6 +569,18 @@ function table(headers, rows) {
 
 function ledgerName(id) {
   return state.ledgers.find((row) => row.id === id)?.name || "";
+}
+
+function companyName(id) {
+  return state.companies.find((row) => row.id === id)?.name || "Company not found";
+}
+
+function isSuperAdmin(user) {
+  return user?.role === "Super Admin";
+}
+
+function canManageUsers() {
+  return isSuperAdmin(currentUser) || currentUser?.role === "Company Admin";
 }
 
 function nextInvoiceNo() {
@@ -521,7 +619,8 @@ function escapeAttr(value) {
 
 function roleBadge(role) {
   const safeRole = escapeHtml(role || "Viewer");
-  return `<span class="role-badge role-${safeRole.toLowerCase()}">${safeRole}</span>`;
+  const slug = safeRole.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return `<span class="role-badge role-${slug}">${safeRole}</span>`;
 }
 
 function download(filename, content, type) {
