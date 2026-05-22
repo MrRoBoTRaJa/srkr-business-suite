@@ -19,8 +19,11 @@ async function init() {
   db = await openDb();
   await ensureDefaultUser();
   await loadAll();
+  await ensureCompanyCodes();
+  await loadAll();
   bindUi();
   setToday();
+  setLoginMode("buyer");
   renderAll();
   applyAuth();
   await requestPersistentStorage();
@@ -83,8 +86,21 @@ async function loadAll() {
   if (!activeCompanyId && state.companies[0]) setActiveCompany(state.companies[0].id, false);
 }
 
+async function ensureCompanyCodes() {
+  let changed = false;
+  for (let index = 0; index < state.companies.length; index += 1) {
+    const company = state.companies[index];
+    if (!company.code) {
+      await put("companies", { ...company, code: `SPK${String(index + 1).padStart(3, "0")}` });
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 function bindUi() {
   $("#loginForm").addEventListener("submit", login);
+  $$("[data-login-mode]").forEach((button) => button.addEventListener("click", () => setLoginMode(button.dataset.loginMode)));
   $("#logoutBtn").addEventListener("click", logout);
   $$(".nav-btn").forEach((button) => button.addEventListener("click", () => showTab(button.dataset.tab)));
   $$("[data-jump]").forEach((button) => button.addEventListener("click", () => showTab(button.dataset.jump)));
@@ -119,9 +135,16 @@ function setToday() {
 function login(event) {
   event.preventDefault();
   const data = readForm(event.currentTarget);
-  const user = state.users.find((item) => item.userId === data.userId && item.password === data.password);
+  const code = String(data.companyCode || "").trim().toUpperCase();
+  const company = state.companies.find((item) => companyCode(item) === code);
+  const user = state.users.find((item) => {
+    const credentialsMatch = item.userId === data.userId && item.password === data.password;
+    if (!credentialsMatch) return false;
+    if (item.role === "Super Admin" && data.loginMode === "super") return true;
+    return data.loginMode === "buyer" && company && item.companyId === company.id;
+  });
   if (!user) {
-    $("#loginMessage").textContent = "Wrong User ID or Password";
+    $("#loginMessage").textContent = data.loginMode === "buyer" ? "Wrong Company Code, User ID or Password" : "Wrong Super Admin login";
     return;
   }
   currentUser = user;
@@ -143,8 +166,21 @@ function applyAuth() {
   if (!currentUser && saved) currentUser = state.users.find((user) => user.id === saved) || null;
   const ok = !!currentUser;
   document.body.classList.toggle("is-locked", !ok);
+  document.body.classList.toggle("is-super-admin", ok && isSuperAdmin(currentUser));
+  document.body.classList.toggle("is-buyer-user", ok && !isSuperAdmin(currentUser));
   $("#loginScreen").hidden = ok;
   $("#activeRole").textContent = ok ? currentUser.role : "Locked";
+}
+
+function setLoginMode(mode) {
+  const form = $("#loginForm");
+  form.elements.loginMode.value = mode;
+  $$("[data-login-mode]").forEach((button) => button.classList.toggle("active", button.dataset.loginMode === mode));
+  $("#companyCodeField").hidden = mode === "super";
+  $("#loginHintTitle").textContent = mode === "super" ? "Super Admin login" : "Buyer login";
+  $("#loginHintLine1").textContent = mode === "super" ? "User ID: admin" : "Company Code + User ID + Password";
+  $("#loginHintLine2").textContent = mode === "super" ? "Password: spark@123" : "Purchase ke baad ye details buyer ko milega.";
+  $("#loginMessage").textContent = "";
 }
 
 function showTab(id) {
@@ -174,6 +210,7 @@ async function saveCompany(event) {
   event.preventDefault();
   const data = readForm(event.currentTarget);
   const company = { ...data, id: data.id || uid("cmp") };
+  company.code = String(data.code || nextCompanyCode()).trim().toUpperCase();
   await put("companies", company);
   setActiveCompany(company.id, false);
   await afterWrite("Company saved");
@@ -265,6 +302,7 @@ function renderHeader() {
   const company = activeCompany();
   $("#activeCompanyName").textContent = company ? company.name : "No Company";
   $("#dashCompany").textContent = company ? company.name : "-";
+  $("#dashCompanyCode").textContent = company ? companyCode(company) : "-";
   $("#dashFy").textContent = company ? `${dateShort(company.fyFrom)} to ${dateShort(company.fyTo)}` : "-";
   $("#dashUser").textContent = currentUser ? `${currentUser.userId} (${currentUser.role})` : "-";
   renderStorageStatus(localStorage.getItem("spark_erp_storage_status") || "Checking...");
@@ -289,8 +327,8 @@ function resetInvoiceForm() {
 
 function renderCompanyList() {
   const companies = isSuperAdmin(currentUser) ? state.companies : state.companies.filter((row) => row.id === currentUser?.companyId);
-  $("#companyList").innerHTML = table(["Company", "GSTIN", "FY", "Action"], companies.map((row) => [
-    row.name, row.gstin || "", `${dateShort(row.fyFrom)} to ${dateShort(row.fyTo)}`,
+  $("#companyList").innerHTML = table(["Company", "Code", "GSTIN", "FY", "Action"], companies.map((row) => [
+    row.name, companyCode(row), row.gstin || "", `${dateShort(row.fyFrom)} to ${dateShort(row.fyTo)}`,
     `<button type="button" onclick="selectCompany('${row.id}')">Open</button>`
   ]));
 }
@@ -573,6 +611,15 @@ function ledgerName(id) {
 
 function companyName(id) {
   return state.companies.find((row) => row.id === id)?.name || "Company not found";
+}
+
+function companyCode(company) {
+  return String(company?.code || company?.id || "").toUpperCase();
+}
+
+function nextCompanyCode() {
+  const next = state.companies.length + 1;
+  return `SPK${String(next).padStart(3, "0")}`;
 }
 
 function isSuperAdmin(user) {

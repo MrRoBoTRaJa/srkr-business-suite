@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#111111">
     <title>Spark ERP Phase 1</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="styles.css?v=15">
   </head>
   <body class="is-locked">
     <section id="loginScreen" class="login-screen">
@@ -15,23 +15,29 @@
           <img src="assets/spark-logo.avif" alt="Spark Digital Marketing logo">
           <p class="eyebrow">Spark Digital Marketing</p>
           <h1>Spark ERP Phase 1</h1>
+          <div class="login-tabs" role="group" aria-label="Login type">
+            <button class="active" data-login-mode="buyer" type="button">Buyer Login</button>
+            <button data-login-mode="super" type="button">Super Admin</button>
+          </div>
+          <input name="loginMode" type="hidden" value="buyer">
+          <label id="companyCodeField">Company Code<input name="companyCode" autocomplete="organization" placeholder="Example: SPK001"></label>
           <label>User ID<input name="userId" autocomplete="username" required></label>
           <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
           <button type="submit">Login</button>
           <p id="loginMessage" class="message" role="status"></p>
           <div class="credential-box">
-            <strong>First login</strong>
-            <span>User ID: admin</span>
-            <span>Password: spark@123</span>
+            <strong id="loginHintTitle">Buyer login</strong>
+            <span id="loginHintLine1">Company Code + User ID + Password</span>
+            <span id="loginHintLine2">Purchase ke baad ye details buyer ko milega.</span>
           </div>
         </form>
         <aside class="login-help">
-          <h2>Company setup flow</h2>
+          <h2>After purchase flow</h2>
           <ol>
-            <li>Admin login kare.</li>
-            <li>Company Create me company banaye.</li>
-            <li>Users & Roles me staff ke login banaye.</li>
-            <li>Ledger, voucher, sales, purchase aur reports start kare.</li>
+            <li>Super Admin buyer company banayega.</li>
+            <li>Company Code generate hoga.</li>
+            <li>Company Admin user create hoga.</li>
+            <li>Buyer apne code aur login se software use karega.</li>
           </ol>
         </aside>
       </div>
@@ -93,17 +99,22 @@
             <h2>Company Status</h2>
             <dl class="facts">
               <div><dt>Company</dt><dd id="dashCompany">-</dd></div>
+              <div><dt>Code</dt><dd id="dashCompanyCode">-</dd></div>
               <div><dt>FY</dt><dd id="dashFy">-</dd></div>
               <div><dt>User</dt><dd id="dashUser">-</dd></div>
               <div><dt>Storage</dt><dd id="dashStorage">Checking...</dd></div>
               <div><dt>Auto Backup</dt><dd id="dashBackup">-</dd></div>
             </dl>
-            <div class="setup-flow">
-              <h3>Start Selling Setup</h3>
+            <div id="sellerSetup" class="setup-flow">
+              <h3>Seller Purchase Setup</h3>
               <button data-jump="companies" type="button"><span>1</span>Create buyer company</button>
               <button data-jump="users" type="button"><span>2</span>Create company admin/users</button>
               <button data-jump="ledgers" type="button"><span>3</span>Add customers/suppliers</button>
               <button data-jump="backup" type="button"><span>4</span>Export backup</button>
+            </div>
+            <div id="buyerWelcome" class="buyer-welcome">
+              <h3>Buyer Workspace</h3>
+              <p>Yahan se aap apni company ke ledger, voucher, invoice, inventory aur reports manage kar sakte hain.</p>
             </div>
           </section>
         </div>
@@ -122,6 +133,7 @@
             <h2>Create Company</h2>
             <input name="id" type="hidden">
             <label>Company Name<input name="name" required></label>
+            <label>Company Code<input name="code" placeholder="Auto, e.g. SPK001"></label>
             <label>Owner<input name="owner"></label>
             <label>GSTIN<input name="gstin"></label>
             <label>Mobile<input name="mobile"></label>
@@ -276,6 +288,6 @@
     </main>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=14" defer></script>
+    <script src="app.js?v=15" defer></script>
   </body>
 </html>
