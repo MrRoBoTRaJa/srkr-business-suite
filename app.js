@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.0.1";
+const APP_VERSION = "1.0.2";
 const RELEASE_API = "https://api.github.com/repos/MrRoBoTRaJa/spark-erp/releases/latest";
 const DB_NAME = "spark_erp_phase1";
 const DB_VERSION = 3;
@@ -127,6 +127,7 @@ function bindUi() {
   $("#refreshReportsBtn").addEventListener("click", renderReports);
   $("#persistStorageBtn").addEventListener("click", () => requestPersistentStorage(true));
   $("#checkUpdateBtn").addEventListener("click", () => checkForUpdate(true));
+  $("#downloadLatestBtn").addEventListener("click", downloadUpdate);
   $("#dismissUpdateBtn").addEventListener("click", hideUpdatePopup);
   $("#downloadUpdateBtn").addEventListener("click", downloadUpdate);
   $("#exportBackupBtn").addEventListener("click", exportBackup);
@@ -662,9 +663,13 @@ async function checkForUpdate(showToast = false) {
     const release = await response.json();
     const latestVersion = normalizeVersion(release.tag_name || release.name);
     const apk = (release.assets || []).find((asset) => /\.apk$/i.test(asset.name));
-    if (latestVersion && compareVersions(latestVersion, APP_VERSION) > 0 && apk) {
+    if (apk) {
       localStorage.setItem("spark_erp_update_url", apk.browser_download_url);
       localStorage.setItem("spark_erp_update_version", latestVersion);
+      $("#downloadLatestBtn").dataset.url = apk.browser_download_url;
+      $("#downloadLatestBtn").hidden = false;
+    }
+    if (latestVersion && compareVersions(latestVersion, APP_VERSION) > 0 && apk) {
       status.textContent = `Update available: v${latestVersion}`;
       showUpdatePopup(latestVersion, apk.browser_download_url);
       return true;
@@ -691,7 +696,20 @@ function hideUpdatePopup() {
 
 function downloadUpdate() {
   const url = $("#downloadUpdateBtn").dataset.url || localStorage.getItem("spark_erp_update_url");
-  if (url) window.open(url, "_blank");
+  if (!url) {
+    toast("Pehle Check Update dabaiye");
+    return;
+  }
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_self";
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => {
+    window.location.href = url;
+  }, 300);
 }
 
 function normalizeVersion(value) {

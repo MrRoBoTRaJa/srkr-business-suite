@@ -1,6 +1,8 @@
 package com.sparkdigitalmarketing.sparkerp;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.MimeTypeMap;
 import android.webkit.WebResourceRequest;
@@ -16,7 +18,7 @@ import java.util.Map;
 
 public class MainActivity extends Activity {
     private static final String APP_HOST = "spark-erp.local";
-    private static final String START_URL = "https://" + APP_HOST + "/index.html?v=21";
+    private static final String START_URL = "https://" + APP_HOST + "/index.html?v=22";
     private WebView webView;
 
     @Override
@@ -34,6 +36,7 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
 
         webView.setWebViewClient(new LocalAssetClient());
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> openExternal(url));
         webView.loadUrl(START_URL);
     }
 
@@ -47,6 +50,27 @@ public class MainActivity extends Activity {
     }
 
     private class LocalAssetClient extends WebViewClient {
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+            return handleExternalUrl(request.getUrl());
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            return handleExternalUrl(Uri.parse(url));
+        }
+
+        private boolean handleExternalUrl(Uri uri) {
+            String host = uri.getHost();
+            if (APP_HOST.equals(host)) return false;
+            if ("github.com".equals(host) || "objects.githubusercontent.com".equals(host)) {
+                openExternal(uri.toString());
+                return true;
+            }
+            return false;
+        }
+
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
             if (!APP_HOST.equals(request.getUrl().getHost())) return null;
@@ -78,6 +102,16 @@ public class MainActivity extends Activity {
             String ext = MimeTypeMap.getFileExtensionFromUrl(path);
             String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
             return mime == null ? "application/octet-stream" : mime;
+        }
+    }
+
+    private void openExternal(String url) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception ignored) {
+            webView.loadUrl(url);
         }
     }
 }
