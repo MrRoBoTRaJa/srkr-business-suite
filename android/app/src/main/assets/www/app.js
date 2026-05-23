@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.0.4";
+const APP_VERSION = "1.0.5";
 const RELEASE_API = "https://api.github.com/repos/MrRoBoTRaJa/spark-erp/releases/latest";
 const DB_NAME = "spark_erp_phase1";
 const DB_VERSION = 3;
@@ -196,8 +196,8 @@ function setLoginMode(mode) {
   $$("[data-login-mode]").forEach((button) => button.classList.toggle("active", button.dataset.loginMode === mode));
   $("#companyCodeField").hidden = mode === "super";
   $("#loginHintTitle").textContent = mode === "super" ? "Super Admin login" : "Buyer login";
-  $("#loginHintLine1").textContent = mode === "super" ? "User ID: admin" : "Company Code + User ID + Password";
-  $("#loginHintLine2").textContent = mode === "super" ? "Password: spark@123" : "Purchase ke baad ye details buyer ko milega.";
+  $("#loginHintLine1").textContent = mode === "super" ? "Owner credentials required" : "Company Code + User ID + Password";
+  $("#loginHintLine2").textContent = mode === "super" ? "ID/password owner ke paas rahega." : "Purchase ke baad ye details buyer ko milega.";
   $("#loginMessage").textContent = "";
 }
 
