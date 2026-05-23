@@ -349,6 +349,17 @@ th { color: var(--gold); background: var(--black); }
   border: 1px solid var(--line);
   border-radius: 8px;
 }
+.import-card {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.import-card strong { color: var(--black); }
+.import-card span { color: var(--muted); font-weight: 800; }
 .storage-card strong { color: var(--black); }
 .storage-card span { color: var(--muted); font-weight: 900; }
 .storage-card button { justify-self: start; }

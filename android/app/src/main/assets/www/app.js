@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.0.8";
+const APP_VERSION = "1.0.9";
 const RELEASE_API = "https://api.github.com/repos/MrRoBoTRaJa/spark-erp/releases/latest";
 const RELEASE_PAGE = "https://github.com/MrRoBoTRaJa/spark-erp/releases/latest";
 const DB_NAME = "spark_erp_phase1";
@@ -119,6 +119,8 @@ function bindUi() {
   $("#newLedgerBtn").addEventListener("click", () => $("#ledgerForm").reset());
   $("#costCategoryForm").addEventListener("submit", saveCostCategory);
   $("#newCostCategoryBtn").addEventListener("click", () => $("#costCategoryForm").reset());
+  $("#importCostCategoryBtn").addEventListener("click", importCostCategories);
+  $("#downloadCostCategorySampleBtn").addEventListener("click", downloadCostCategorySample);
   $("#costCentreForm").addEventListener("submit", saveCostCentre);
   $("#newCostCentreBtn").addEventListener("click", () => $("#costCentreForm").reset());
   $$("[name='costCategoryId']").forEach((select) => select.addEventListener("change", renderCostCentreOptions));
@@ -273,6 +275,48 @@ async function saveCostCategory(event) {
   await put("costCategories", { ...data, id: data.id || uid("cc"), companyId: activeCompanyId, createdAt: now() });
   await afterWrite("Cost Category saved");
   event.currentTarget.reset();
+}
+
+async function importCostCategories() {
+  if (!requireCompany()) return;
+  const file = $("#costCategoryImportFile").files[0];
+  if (!file) return toast("Excel/CSV file select karo");
+  let rows = [];
+  const ext = file.name.split(".").pop().toLowerCase();
+  if (["xlsx", "xls"].includes(ext)) {
+    if (!window.XLSX) return toast("Excel parser load nahi hua");
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+  } else if (ext === "csv") {
+    rows = parseCsv(await file.text());
+  } else {
+    return toast("Sirf .xlsx, .xls, .csv file upload karein");
+  }
+  const imported = [];
+  for (const source of rows) {
+    const row = normalizeImportRow(source);
+    if (!row.name) continue;
+    const existing = companyRows(state.costCategories).find((item) => item.name.toLowerCase() === row.name.toLowerCase());
+    imported.push({
+      id: existing?.id || uid("cc"),
+      companyId: activeCompanyId,
+      name: row.name,
+      type: row.type || existing?.type || "Primary",
+      status: row.status || existing?.status || "Active",
+      notes: row.notes || existing?.notes || "",
+      createdAt: existing?.createdAt || now()
+    });
+  }
+  if (!imported.length) return toast("File me category list nahi mila");
+  for (const row of imported) await put("costCategories", row);
+  $("#costCategoryImportFile").value = "";
+  await afterWrite(`${imported.length} category imported`);
+}
+
+function downloadCostCategorySample() {
+  const csv = "Category Name,Type,Status,Notes\nDigital Marketing,Project,Active,Sample category\nWebsite Design,Campaign,Active,Sample category\nPrinting,Department,Active,Sample category\n";
+  download("cost-category-sample.csv", csv, "text/csv");
 }
 
 async function saveCostCentre(event) {
@@ -913,6 +957,49 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value).replace(/`/g, "&#96;");
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+    if (char === '"' && quoted && next === '"') {
+      value += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === "," && !quoted) {
+      row.push(value);
+      value = "";
+    } else if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(value);
+      if (row.some((cell) => String(cell).trim())) rows.push(row);
+      row = [];
+      value = "";
+    } else {
+      value += char;
+    }
+  }
+  row.push(value);
+  if (row.some((cell) => String(cell).trim())) rows.push(row);
+  const headers = rows.shift()?.map((cell) => String(cell).trim()) || [];
+  return rows.map((cells) => Object.fromEntries(headers.map((header, index) => [header || `Column ${index + 1}`, cells[index] || ""])));
+}
+
+function normalizeImportRow(source) {
+  const entries = Object.entries(source).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), String(value || "").trim()]);
+  const pick = (...names) => entries.find(([key]) => names.includes(key))?.[1] || "";
+  return {
+    name: pick("categoryname", "category", "name", "costcategory", "column1") || String(Object.values(source)[0] || "").trim(),
+    type: pick("type", "categorytype") || "Primary",
+    status: pick("status") || "Active",
+    notes: pick("notes", "note", "remark", "remarks", "description")
+  };
 }
 
 function roleBadge(role) {
