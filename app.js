@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.0.11";
+const APP_VERSION = "1.0.12";
 const RELEASE_API = "https://api.github.com/repos/MrRoBoTRaJa/spark-erp/releases/latest";
 const RELEASE_PAGE = "https://github.com/MrRoBoTRaJa/spark-erp/releases/latest";
 const DB_NAME = "spark_erp_phase1";
@@ -70,6 +70,14 @@ function put(name, value) {
   return new Promise((resolve, reject) => {
     const request = store(name, "readwrite").put(value);
     request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function removeRecord(name, id) {
+  return new Promise((resolve, reject) => {
+    const request = store(name, "readwrite").delete(id);
+    request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
 }
@@ -470,13 +478,33 @@ function renderCompanyOptions() {
 }
 
 function renderUserList() {
-  $("#userList").innerHTML = table(["User ID", "Role", "Company", "Password", "Action"], visibleUsers().map((row) => [
-    row.userId,
-    roleBadge(row.role),
-    row.companyId ? companyName(row.companyId) : "All Companies",
-    "••••••",
-    `<button type="button" data-edit-user="${escapeAttr(row.id)}">Edit</button>`
-  ]));
+  const rows = visibleUsers();
+  if (!rows.length) {
+    $("#userList").innerHTML = `<div class="empty">No users.</div>`;
+    return;
+  }
+  const groups = isSuperAdmin(currentUser) ? userGroups(rows) : [{ title: companyName(currentUser.companyId), rows }];
+  $("#userList").innerHTML = groups.map((group) => `
+    <section class="company-user-group">
+      <h3>${escapeHtml(group.title)}</h3>
+      ${table(["User ID", "Role", "Password", "Action"], group.rows.map((row) => [
+        row.userId,
+        roleBadge(row.role),
+        "••••••",
+        `<div class="inline-actions"><button type="button" data-edit-user="${escapeAttr(row.id)}">Edit</button><button class="ghost" type="button" data-delete-user="${escapeAttr(row.id)}">Delete</button></div>`
+      ]))}
+    </section>
+  `).join("");
+}
+
+function userGroups(rows) {
+  const groups = [{ title: "Super Admin / All Companies", rows: rows.filter((row) => !row.companyId) }];
+  state.companies.forEach((company) => {
+    groups.push({ title: company.name, rows: rows.filter((row) => row.companyId === company.id) });
+  });
+  const missing = rows.filter((row) => row.companyId && !state.companies.some((company) => company.id === row.companyId));
+  if (missing.length) groups.push({ title: "Company not found", rows: missing });
+  return groups.filter((group) => group.rows.length);
 }
 
 function visibleUsers() {
@@ -486,9 +514,13 @@ function visibleUsers() {
 }
 
 function handleUserListClick(event) {
-  const button = event.target.closest("[data-edit-user]");
-  if (!button) return;
-  editUser(button.dataset.editUser);
+  const editButton = event.target.closest("[data-edit-user]");
+  if (editButton) {
+    editUser(editButton.dataset.editUser);
+    return;
+  }
+  const deleteButton = event.target.closest("[data-delete-user]");
+  if (deleteButton) deleteUser(deleteButton.dataset.deleteUser);
 }
 
 function editUser(id) {
@@ -503,6 +535,20 @@ function editUser(id) {
 }
 
 window.editUser = editUser;
+
+async function deleteUser(id) {
+  const user = state.users.find((row) => row.id === id);
+  if (!user) return toast("User record nahi mila");
+  if (user.id === "admin" || user.userId === "admin") return toast("Main Super Admin delete nahi hoga");
+  if (!canManageUsers()) return toast("Users delete karne ke liye admin login chahiye");
+  if (!isSuperAdmin(currentUser) && user.companyId !== currentUser.companyId) return toast("Dusri company ka user delete nahi kar sakte");
+  if (currentUser?.id === user.id) return toast("Apna login delete nahi kar sakte");
+  const ok = confirm(`${user.userId} ko delete karna hai?`);
+  if (!ok) return;
+  await removeRecord("users", user.id);
+  if ($("#userForm").elements.id.value === user.id) resetUserForm();
+  await afterWrite("User deleted");
+}
 
 function renderLedgerList() {
   const rows = companyRows(state.ledgers);

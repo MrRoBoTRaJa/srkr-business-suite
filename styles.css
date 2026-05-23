@@ -325,6 +325,24 @@ th { color: var(--gold); background: var(--black); }
 }
 .role-cards strong { color: var(--black); }
 .role-cards span { color: var(--muted); font-size: 12px; font-weight: 800; }
+.company-user-group {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.company-user-group h3 {
+  margin: 0;
+  padding: 9px 10px;
+  color: var(--black);
+  background: var(--gold);
+  border-radius: 6px;
+}
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.inline-actions button { min-width: 80px; }
 .role-badge {
   display: inline-grid;
   place-items: center;
