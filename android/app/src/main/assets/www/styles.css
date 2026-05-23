@@ -213,6 +213,15 @@ input, select, textarea {
   padding: 8px;
   background: white;
 }
+.password-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.mini-btn {
+  min-height: 38px;
+  padding: 0 10px;
+}
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
 
 .gateway-menu h2, .gateway-status h2 {

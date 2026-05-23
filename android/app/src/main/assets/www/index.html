@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#111111">
     <title>Spark ERP Phase 1</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles.css?v=32">
+    <link rel="stylesheet" href="styles.css?v=33">
   </head>
   <body class="is-locked">
     <section id="loginScreen" class="login-screen">
@@ -22,7 +22,7 @@
           <input name="loginMode" type="hidden" value="buyer">
           <label id="companyCodeField">Company Code<input name="companyCode" autocomplete="organization" placeholder="Example: SPK001"></label>
           <label>User ID<input name="userId" autocomplete="username" required></label>
-          <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+          <label>Password<span class="password-line"><input id="loginPassword" name="password" type="password" autocomplete="current-password" required><button class="ghost mini-btn" data-toggle-password="#loginPassword" type="button">View</button></span></label>
           <button type="submit">Login</button>
           <p id="loginMessage" class="message" role="status"></p>
           <div class="credential-box">
@@ -160,7 +160,7 @@
             <h2>Company User Login & Roles</h2>
             <input name="id" type="hidden">
             <label>User ID<input name="userId" required></label>
-            <label>Password<input name="password" type="password" required></label>
+            <label>Password<span class="password-line"><input id="userPassword" name="password" type="password" required><button class="ghost mini-btn" data-toggle-password="#userPassword" type="button">View</button></span></label>
             <label>Role<select name="role"><option>Company Admin</option><option>Accountant</option><option>Viewer</option><option>Super Admin</option></select></label>
             <label>User Company<select name="companyId"></select></label>
             <p class="form-note">Super Admin sabhi company dekh sakta hai. Company Admin aur staff sirf apni company ka data use karenge.</p>
@@ -168,6 +168,7 @@
           </form>
           <section class="surface">
             <h2>Company Wise Users</h2>
+            <button class="ghost" data-toggle-user-passwords type="button">Show / Hide Passwords</button>
             <div class="role-cards">
               <article><strong>Super Admin</strong><span>All companies access</span></article>
               <article><strong>Company Admin</strong><span>Own company setup and users</span></article>
@@ -330,7 +331,7 @@
             </div>
             <div class="storage-card">
               <strong>App Update</strong>
-              <span id="updateStatus">Current version 1.0.12</span>
+              <span id="updateStatus">Current version 1.0.13</span>
               <button id="checkUpdateBtn" class="ghost" type="button">Check Update</button>
               <button id="downloadLatestBtn" class="ghost" type="button" hidden>Open APK Download Page</button>
             </div>
@@ -356,6 +357,6 @@
     </div>
     <div id="toast" class="toast" role="status"></div>
     <script src="vendor/xlsx.full.min.js?v=1" defer></script>
-    <script src="app.js?v=32" defer></script>
+    <script src="app.js?v=33" defer></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.0.12";
+const APP_VERSION = "1.0.13";
 const RELEASE_API = "https://api.github.com/repos/MrRoBoTRaJa/spark-erp/releases/latest";
 const RELEASE_PAGE = "https://github.com/MrRoBoTRaJa/spark-erp/releases/latest";
 const DB_NAME = "spark_erp_phase1";
@@ -12,6 +12,7 @@ let db;
 let currentUser = null;
 let activeCompanyId = localStorage.getItem("spark_erp_active_company") || "";
 let state = { users: [], companies: [], ledgers: [], costCategories: [], costCentres: [], vouchers: [], invoices: [], stock: [], backups: [] };
+let showUserPasswords = false;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -130,6 +131,7 @@ async function ensureCompanyCodes() {
 function bindUi() {
   $("#loginForm").addEventListener("submit", login);
   $$("[data-login-mode]").forEach((button) => button.addEventListener("click", () => setLoginMode(button.dataset.loginMode)));
+  $$("[data-toggle-password]").forEach((button) => button.addEventListener("click", togglePasswordField));
   $("#logoutBtn").addEventListener("click", logout);
   $$(".nav-btn").forEach((button) => button.addEventListener("click", () => showTab(button.dataset.tab)));
   $$("[data-jump]").forEach((button) => button.addEventListener("click", () => showTab(button.dataset.jump)));
@@ -139,6 +141,10 @@ function bindUi() {
   $("#userForm").addEventListener("submit", saveUser);
   $("#newUserBtn").addEventListener("click", resetUserForm);
   $("#userList").addEventListener("click", handleUserListClick);
+  $("[data-toggle-user-passwords]").addEventListener("click", () => {
+    showUserPasswords = !showUserPasswords;
+    renderUserList();
+  });
   $("#userForm").elements.role.addEventListener("change", updateUserCompanyField);
   $("#ledgerForm").addEventListener("submit", saveLedger);
   $("#newLedgerBtn").addEventListener("click", () => $("#ledgerForm").reset());
@@ -490,7 +496,7 @@ function renderUserList() {
       ${table(["User ID", "Role", "Password", "Action"], group.rows.map((row) => [
         row.userId,
         roleBadge(row.role),
-        "••••••",
+        showUserPasswords ? escapeHtml(row.password || "") : "••••••",
         `<div class="inline-actions"><button type="button" data-edit-user="${escapeAttr(row.id)}">Edit</button><button class="ghost" type="button" data-delete-user="${escapeAttr(row.id)}">Delete</button></div>`
       ]))}
     </section>
@@ -548,6 +554,14 @@ async function deleteUser(id) {
   await removeRecord("users", user.id);
   if ($("#userForm").elements.id.value === user.id) resetUserForm();
   await afterWrite("User deleted");
+}
+
+function togglePasswordField(event) {
+  const target = document.querySelector(event.currentTarget.dataset.togglePassword);
+  if (!target) return;
+  const visible = target.type === "text";
+  target.type = visible ? "password" : "text";
+  event.currentTarget.textContent = visible ? "View" : "Hide";
 }
 
 function renderLedgerList() {
