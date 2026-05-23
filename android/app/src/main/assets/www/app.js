@@ -1,6 +1,6 @@
 "use strict";
 
-const APP_VERSION = "1.0.9";
+const APP_VERSION = "1.0.10";
 const RELEASE_API = "https://api.github.com/repos/MrRoBoTRaJa/spark-erp/releases/latest";
 const RELEASE_PAGE = "https://github.com/MrRoBoTRaJa/spark-erp/releases/latest";
 const DB_NAME = "spark_erp_phase1";

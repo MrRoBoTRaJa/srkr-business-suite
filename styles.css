@@ -565,6 +565,45 @@ th { color: var(--gold); background: var(--black); }
     overflow-wrap: anywhere;
   }
   .entry-table input { min-width: 96px; }
+  .entry-table {
+    width: 100%;
+    min-width: 0;
+  }
+  .entry-table thead { display: none; }
+  .entry-table tbody,
+  .entry-table tr,
+  .entry-table td {
+    display: block;
+    width: 100%;
+  }
+  .entry-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+    background: white;
+    border-bottom: 1px solid var(--line);
+  }
+  .entry-table td {
+    max-width: none;
+    padding: 0;
+    border-bottom: 0;
+  }
+  .entry-table td:nth-child(6),
+  .entry-table td:nth-child(7) {
+    grid-column: 1 / -1;
+  }
+  .entry-table .line-total {
+    padding: 9px;
+    color: white;
+    background: var(--black);
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    text-align: center;
+  }
+  .entry-table td:nth-child(7) button {
+    width: 100%;
+  }
   .section-head {
     align-items: stretch;
     flex-direction: column;
